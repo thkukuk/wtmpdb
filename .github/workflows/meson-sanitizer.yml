@@ -1,0 +1,24 @@
+name: meson sanitizer
+
+on: [push, pull_request]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    steps:
+    - name: Install pam-devel
+      run: sudo apt-get install libpam0g-dev
+    - uses: actions/checkout@v3
+    - uses: BSFishy/meson-build@v1.0.3
+      with:
+        action: build
+        directory: build
+        setup-options: -Db_sanitize=address,undefined
+        options: --verbose
+    - uses: BSFishy/meson-build@v1.0.3
+      with:
+        action: test
+        directory: build
+        setup-options: -Db_sanitize=address,undefined
+        options: --verbose
