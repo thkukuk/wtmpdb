@@ -1,0 +1,5 @@
+LIBWTMPDB_0.1 {
+  global:
+	logwtmpdb;
+  local: *;
+};

@@ -1,0 +1,12 @@
+option('split-usr', type : 'combo', choices : ['auto', 'true', 'false'],
+       description : '''/bin, /sbin aren't symlinks into /usr''')
+option('rootprefix', type : 'string',
+       description : '''override the root prefix [default '/' if split-usr and '/usr' otherwise]''')
+option('rootlibdir', type : 'string',
+       description : '''[/usr]/lib/x86_64-linux-gnu or such''')
+option('pamlibdir', type : 'string',
+       description : 'directory for PAM modules')
+option('man', type : 'combo', choices : ['auto', 'true', 'false'],
+       value : 'auto',
+       description : 'build and install man pages')
+
