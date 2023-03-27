@@ -186,7 +186,7 @@ add_entry (sqlite3 *db, int type, const char *user, pid_t pid,
   if (step != SQLITE_DONE)
     {
       if (error)
-        if (asprintf (error, "Delete statement did not return SQLITE_DONE: %d",
+        if (asprintf (error, "Adding an entry did not return SQLITE_DONE: %d",
                       step) < 0)
           *error = strdup("Out of memory");
 
@@ -269,6 +269,18 @@ update_logout (sqlite3 *db, int64_t id, usec_t logout, char **error)
       if (error)
         if (asprintf (error, "Updating logout time did not return SQLITE_DONE: %d",
                       step) < 0)
+          *error = strdup("Out of memory");
+
+      sqlite3_finalize(res);
+      return -1;
+    }
+
+  int changes;
+  if ((changes = sqlite3_changes (db)) != 1)
+    {
+      if (error)
+        if (asprintf (error, "Updated wrong number of rows, expected 1, got %d",
+                      changes) < 0)
           *error = strdup("Out of memory");
 
       sqlite3_finalize(res);
