@@ -54,24 +54,25 @@ logwtmpdb (const char *db_path, const char *tty, const char *name,
 {
   pid_t pid = getpid ();
   int64_t retval = -1;
+  struct timespec ts;
+
+  clock_gettime (CLOCK_REALTIME, &ts);
+
+  int64_t time = wtmpdb_timespec2usec (ts);
 
   if (error)
     *error = NULL;
 
   if (name != NULL && strlen (name) > 0)
     { /* login */
-      struct timespec ts;
-
-      clock_gettime (CLOCK_REALTIME, &ts);
-
       retval = wtmpdb_login (db_path ? db_path : _PATH_WTMPDB, USER_PROCESS,
-			     name, pid, wtmpdb_timespec2usec (ts), tty,
+			     name, pid, time, tty,
 			     host, service, error);
     }
   else
     { /* logout */
-
-      /* XXX retval = wtmpdb_logout (db_path ? db_path : _PATH_WTMPDB, error); */
+      int64_t id = wtmpdb_get_id (db_path ? db_path : _PATH_WTMPDB, tty, error);
+      retval = wtmpdb_logout (db_path ? db_path : _PATH_WTMPDB, id, time, error);
     }
 
   return retval;

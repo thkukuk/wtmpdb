@@ -54,4 +54,6 @@ extern int wtmpdb_logout (const char *db_path, int64_t id, usec_t logout,
 		          char **error);
 
 /* helper function */
+extern int64_t wtmpdb_get_id (const char *db_path, const char *tty,
+			      char **error);
 extern usec_t wtmpdb_timespec2usec (const struct timespec ts);

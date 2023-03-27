@@ -9,7 +9,7 @@ project(
                   'buildtype=debugoptimized',
   		  'default_library=shared',
 		  'b_pie=true',
-		  'warning_level=2',],
+		  'warning_level=3',],
   license : ['BSD-2-Clause',],
   version : '0.0.1',
 )
@@ -25,7 +25,6 @@ add_project_arguments(['-D_GNU_SOURCE=1',
                        '-D_TIME_BITS=64'], language : 'c')
 
 possible_cc_flags = [
-                  '-Dwerror=true',
                   '-flto=auto',
                   '-ffat-lto-objects',
 		  '-fstack-protector-strong',

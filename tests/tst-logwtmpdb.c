@@ -41,7 +41,9 @@ main(void)
 {
   const char *db_path = "tst-logwtmpdb.db";
   char *error = NULL;
-  int64_t id;
+
+  /* make sure there is no old stuff flying around */
+  remove (db_path);
 
   if (logwtmpdb (db_path, "pts/99", "user", NULL, "test", &error) < 0)
     {

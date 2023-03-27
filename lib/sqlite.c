@@ -314,3 +314,66 @@ wtmpdb_logout (const char *db_path, int64_t id, usec_t logout, char **error)
 
   return retval;
 }
+
+static int64_t
+search_rowid (sqlite3 *db, const char *tty, char **error)
+{
+  int64_t id = -1;
+  sqlite3_stmt *res;
+  char *sql = "SELECT rowid FROM wtmp WHERE TTY = ? AND Logout IS NULL ORDER BY Login DESC LIMIT 1";
+
+  if (sqlite3_prepare_v2 (db, sql, -1, &res, 0) != SQLITE_OK)
+    {
+      if (error)
+        if (asprintf (error, "Failed to execute statement: %s",
+                      sqlite3_errmsg (db)) < 0)
+          *error = strdup ("Out of memory");
+
+      return -1;
+    }
+
+  if (sqlite3_bind_text (res, 1, tty, -1, SQLITE_STATIC) != SQLITE_OK)
+    {
+      if (error)
+        if (asprintf (error, "Failed to create search query: %s",
+                      sqlite3_errmsg (db)) < 0)
+          *error = strdup("Out of memory");
+
+      sqlite3_finalize(res);
+      return -1;
+    }
+
+  int step = sqlite3_step (res);
+
+  if (step == SQLITE_ROW)
+    id = sqlite3_column_int64 (res, 0);
+  else
+    {
+      if (error)
+        if (asprintf (error, "TTY '%s' without logout time not found (%d)", tty, step) < 0)
+          *error = strdup("Out of memory");
+
+      sqlite3_finalize (res);
+      return -1;
+    }
+
+  sqlite3_finalize (res);
+
+  return id;
+}
+
+int64_t
+wtmpdb_get_id (const char *db_path, const char *tty, char **error)
+{
+  sqlite3 *db;
+  int retval;
+
+  if ((db = open_database_ro (db_path?db_path:_PATH_WTMPDB, error)) == NULL)
+    return -1;
+
+  retval = search_rowid (db, tty, error);
+
+  sqlite3_close (db);
+
+  return retval;
+}
