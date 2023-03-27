@@ -25,54 +25,47 @@
   POSSIBILITY OF SUCH DAMAGE.
 */
 
+/* Test case:
+   Create login entry, add logout time via logwtmpdb()
+*/
+
 #include <time.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#include <stdint.h>
 
 #include "wtmpdb.h"
 
-usec_t
-wtmpdb_timespec2usec (const struct timespec ts)
+int
+main(void)
 {
-  if (ts.tv_sec < 0 || ts.tv_nsec < 0)
-    return USEC_INFINITY;
+  const char *db_path = "tst-logwtmpdb.db";
+  char *error = NULL;
+  int64_t id;
 
-  if ((usec_t) ts.tv_sec >
-      (UINT64_MAX - (ts.tv_nsec / NSEC_PER_USEC)) / USEC_PER_SEC)
-    return UINT64_MAX;
-
-  return (usec_t) ts.tv_sec * USEC_PER_SEC +
-    (usec_t) ts.tv_nsec / NSEC_PER_USEC;
-}
-
-
-int64_t
-logwtmpdb (const char *db_path, const char *tty, const char *name,
-	   const char *host, const char *service, char **error)
-{
-  pid_t pid = getpid ();
-  int64_t retval = -1;
-
-  if (error)
-    *error = NULL;
-
-  if (name != NULL && strlen (name) > 0)
-    { /* login */
-      struct timespec ts;
-
-      clock_gettime (CLOCK_REALTIME, &ts);
-
-      retval = wtmpdb_login (db_path ? db_path : _PATH_WTMPDB, USER_PROCESS,
-			     name, pid, wtmpdb_timespec2usec (ts), tty,
-			     host, service, error);
-    }
-  else
-    { /* logout */
-
-      /* XXX retval = wtmpdb_logout (db_path ? db_path : _PATH_WTMPDB, error); */
+  if (logwtmpdb (db_path, "pts/99", "user", NULL, "test", &error) < 0)
+    {
+      if (error)
+        {
+          fprintf (stderr, "%s\n", error);
+          free (error);
+        }
+      else
+        fprintf (stderr, "logwtmpdb (login) failed\n");
+      return 1;
     }
 
-  return retval;
+  if (logwtmpdb (db_path, "pts/99", NULL, NULL, NULL, &error) != 0)
+    {
+      if (error)
+        {
+          fprintf (stderr, "%s\n", error);
+          free (error);
+        }
+      else
+        fprintf (stderr, "logwtmpdb (logout) failed\n");
+      return 1;
+    }
+
+  return 0;
 }

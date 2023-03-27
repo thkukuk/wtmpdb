@@ -1,5 +1,8 @@
 LIBWTMPDB_0.1 {
   global:
 	logwtmpdb;
+	wtmpdb_login;
+	wtmpdb_logout;
+	wtmpdb_timespec2usec;
   local: *;
 };

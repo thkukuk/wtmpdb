@@ -25,6 +25,7 @@
   POSSIBILITY OF SUCH DAMAGE.
 */
 
+#include <time.h>
 #include <stdlib.h>
 #include <string.h>
 #include <syslog.h>
@@ -130,6 +131,13 @@ pam_sm_acct_mgmt (pam_handle_t *pamh __attribute__((__unused__)),
   return PAM_IGNORE;
 }
 
+static void
+free_idptr(pam_handle_t *pamh __attribute__((__unused__)), void *idptr,
+	   int error_status __attribute__((__unused__)))
+{
+  free (idptr);
+}
+
 int
 pam_sm_open_session (pam_handle_t *pamh, int flags,
 		     int argc, const char **argv)
@@ -139,8 +147,10 @@ pam_sm_open_session (pam_handle_t *pamh, int flags,
   const char *user;
   const char *tty;
   const char *rhost;
+  const char *service;
   char *error = NULL;
   int ctrl;
+  int64_t id;
 
   ctrl = _pam_parse_args (pamh, flags, argc, argv);
 
@@ -178,7 +188,16 @@ pam_sm_open_session (pam_handle_t *pamh, int flags,
   if (ctrl & WTMPDB_DEBUG)
     pam_syslog (pamh, LOG_DEBUG, "rhost=%s", rhost);
 
-  if (logwtmpdb (tty, user, rhost, &error) != 0)
+  void_str = NULL;
+  retval = pam_get_item (pamh, PAM_SERVICE, &void_str);
+  if (retval != PAM_SUCCESS || void_str == NULL)
+    service = "";
+  else
+    service = void_str;
+  if (ctrl & WTMPDB_DEBUG)
+    pam_syslog (pamh, LOG_DEBUG, "service=%s", service);
+
+  if ((id = logwtmpdb (wtmpdb_path, tty, user, rhost, service, &error)) < 0)
     {
       if (error)
         {
@@ -192,6 +211,14 @@ pam_sm_open_session (pam_handle_t *pamh, int flags,
       return PAM_SYSTEM_ERR;
     }
 
+  if (ctrl & WTMPDB_DEBUG)
+    pam_syslog (pamh, LOG_DEBUG, "id=%lld", (long long int)id);
+
+  int64_t *idptr = calloc (1, sizeof(int64_t));
+  *idptr = id;
+
+  pam_set_data(pamh, "ID", idptr, free_idptr);
+
   return PAM_SUCCESS;
 }
 
@@ -201,10 +228,25 @@ pam_sm_close_session (pam_handle_t *pamh, int flags,
 {
   char *error = NULL;
   int ctrl = _pam_parse_args (pamh, flags, argc, argv);
-  const char *terminal_line = get_tty (pamh, ctrl);
+  const void *voidptr = NULL;
+  const int64_t *idptr;
+  int retval;
+  struct timespec ts;
 
-  /* Create wtmp logout entry */
-  if (logwtmpdb (terminal_line, "", "", &error) != 0)
+  clock_gettime (CLOCK_REALTIME, &ts);
+
+  if ((retval = pam_get_data (pamh, "ID", &voidptr)) != PAM_SUCCESS)
+    {
+      pam_syslog (pamh, LOG_ERR, "Cannot get ID from open session!");
+      return retval;
+    }
+  idptr = voidptr;
+  int64_t id = *idptr;
+
+  if (ctrl & WTMPDB_DEBUG)
+    pam_syslog (pamh, LOG_DEBUG, "id=%lli", (long long int)id);
+
+  if (wtmpdb_logout (wtmpdb_path, id, wtmpdb_timespec2usec (ts), &error) < 0)
     {
       if (error)
         {
@@ -213,7 +255,8 @@ pam_sm_close_session (pam_handle_t *pamh, int flags,
         }
       else
         pam_syslog (pamh, LOG_ERR,
-		    "Unknown error writing to database %s", wtmpdb_path);
+		    "Unknown error writing logout time to database %s",
+		    wtmpdb_path);
 
       return PAM_SYSTEM_ERR;
     }

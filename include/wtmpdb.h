@@ -27,6 +27,31 @@
 
 #pragma once
 
+#include <stdint.h>
+#include <sys/types.h>
+
 #define _PATH_WTMPDB "/var/lib/wtmpdb/wtmp.db"
 
-extern int logwtmpdb (const char *tty, const char *name, const char *host, char **error);
+#define EMPTY           0  /* No valid user accounting information.  */
+#define BOOT_TIME       1  /* Time of system boot.  */
+#define RUNLEVEL        2  /* The system's runlevel. Unused with systemd. */
+#define SHUTDOWN_TIME   3  /* Time of system shutdown. */
+#define USER_PROCESS    4  /* Normal process.  */
+
+typedef uint64_t usec_t;
+#define USEC_INFINITY ((usec_t) UINT64_MAX)
+#define NSEC_PER_USEC ((usec_t) 1000ULL)
+#define USEC_PER_SEC  ((usec_t) 1000000ULL)
+
+extern int64_t logwtmpdb (const char *db_path, const char *tty,
+		          const char *name, const char *host,
+		          const char *service, char **error);
+extern int64_t wtmpdb_login (const char *db_path, int type,
+			     const char *user, pid_t pid, usec_t login,
+			     const char *tty, const char *rhost,
+			     const char *service, char **error);
+extern int wtmpdb_logout (const char *db_path, int64_t id, usec_t logout,
+		          char **error);
+
+/* helper function */
+extern usec_t wtmpdb_timespec2usec (const struct timespec ts);

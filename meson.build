@@ -91,7 +91,7 @@ tmpfilesdir = prefixdir / 'lib/tmpfiles.d'
 libpam = cc.find_library('pam')
 libsqlite3 = cc.find_library('sqlite3')
 
-libwtmpdb_c = files('lib/logwtmpdb.c')
+libwtmpdb_c = files('lib/logwtmpdb.c', 'lib/sqlite.c')
 libwtmpdb_map = 'lib/libwtmpdb.map'
 libwtmpdb_map_version = '-Wl,--version-script,@0@/@1@'.format(meson.current_source_dir(), libwtmpdb_map)
 
