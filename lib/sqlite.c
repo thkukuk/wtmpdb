@@ -73,7 +73,7 @@ open_database_rw (const char *path, char **error)
   return db;
 }
 
-/* Add a new entry. Returns rowid (>=0) on success, -1 on failure. */
+/* Add a new entry. Returns ID (>=0) on success, -1 on failure. */
 static int64_t
 add_entry (sqlite3 *db, int type, const char *user, pid_t pid,
 	   usec_t login, const char *tty, const char *rhost,
@@ -81,7 +81,7 @@ add_entry (sqlite3 *db, int type, const char *user, pid_t pid,
 {
   char *err_msg = NULL;
   sqlite3_stmt *res;
-  char *sql_table = "CREATE TABLE IF NOT EXISTS wtmp(Type INTEGER, User TEXT NOT NULL, PID INTEGER, Login INTEGER, Logout INTEGER, TTY TEXT, RemoteHost TEXT, Service TEXT) STRICT;";
+  char *sql_table = "CREATE TABLE IF NOT EXISTS wtmp(ID INTEGER PRIMARY KEY, Type INTEGER, User TEXT NOT NULL, PID INTEGER, Login INTEGER, Logout INTEGER, TTY TEXT, RemoteHost TEXT, Service TEXT) STRICT;";
   char *sql_insert = "INSERT INTO wtmp (Type,User,PID,Login,TTY,RemoteHost,Service) VALUES(?,?,?,?,?,?,?);";
 
   if (sqlite3_exec (db, sql_table, 0, 0, &err_msg) != SQLITE_OK)
@@ -228,7 +228,7 @@ static int
 update_logout (sqlite3 *db, int64_t id, usec_t logout, char **error)
 {
   sqlite3_stmt *res;
-  char *sql = "UPDATE wtmp SET Logout = ? WHERE rowid = ?";
+  char *sql = "UPDATE wtmp SET Logout = ? WHERE ID = ?";
 
   if (sqlite3_prepare_v2 (db, sql, -1, &res, 0) != SQLITE_OK)
     {
@@ -254,7 +254,7 @@ update_logout (sqlite3 *db, int64_t id, usec_t logout, char **error)
   if (sqlite3_bind_int64 (res, 2, id) != SQLITE_OK)
     {
       if (error)
-        if (asprintf (error, "Failed to create update query (rowid): %s",
+        if (asprintf (error, "Failed to create update query (ID): %s",
                       sqlite3_errmsg (db)) < 0)
           *error = strdup("Out of memory");
 
@@ -296,7 +296,7 @@ update_logout (sqlite3 *db, int64_t id, usec_t logout, char **error)
 /*
   Add logout timestamp to existingentry.
   logout is usec.
-  id is the return value of wtmpdb_login/logwtmpdb.
+  ID is the return value of wtmpdb_login/logwtmpdb.
   Returns 0 on success, -1 on failure.
  */
 int
@@ -316,11 +316,11 @@ wtmpdb_logout (const char *db_path, int64_t id, usec_t logout, char **error)
 }
 
 static int64_t
-search_rowid (sqlite3 *db, const char *tty, char **error)
+search_id (sqlite3 *db, const char *tty, char **error)
 {
   int64_t id = -1;
   sqlite3_stmt *res;
-  char *sql = "SELECT rowid FROM wtmp WHERE TTY = ? AND Logout IS NULL ORDER BY Login DESC LIMIT 1";
+  char *sql = "SELECT ID FROM wtmp WHERE TTY = ? AND Logout IS NULL ORDER BY Login DESC LIMIT 1";
 
   if (sqlite3_prepare_v2 (db, sql, -1, &res, 0) != SQLITE_OK)
     {
@@ -371,7 +371,7 @@ wtmpdb_get_id (const char *db_path, const char *tty, char **error)
   if ((db = open_database_ro (db_path?db_path:_PATH_WTMPDB, error)) == NULL)
     return -1;
 
-  retval = search_rowid (db, tty, error);
+  retval = search_id (db, tty, error);
 
   sqlite3_close (db);
 
