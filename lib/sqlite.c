@@ -377,3 +377,36 @@ wtmpdb_get_id (const char *db_path, const char *tty, char **error)
 
   return retval;
 }
+
+/* Reads all entries from database and calls the callback function for
+   each entry.
+   Returns 0 on success, -1 on failure. */
+int
+wtmpdb_read_all  (const char *db_path,
+		  int (*cb_func)(void *unused, int argc, char **argv,
+				 char **azColName),
+		  char **error)
+{
+  sqlite3 *db;
+  char *err_msg = 0;
+
+  if ((db = open_database_ro (db_path, error)) == NULL)
+    return -1;
+
+  char *sql = "SELECT * FROM wtmp";
+
+  if (sqlite3_exec (db, sql, cb_func, NULL, &err_msg) != SQLITE_OK)
+    {
+      if (error)
+        if (asprintf (error, "SQL error: %s", err_msg) < 0)
+          *error = strdup ("Out of memory");
+
+      sqlite3_free (err_msg);
+      sqlite3_close (db);
+      return -1;
+    }
+
+  sqlite3_close (db);
+
+  return 0;
+}

@@ -3,6 +3,7 @@ LIBWTMPDB_0.1 {
 	logwtmpdb;
 	wtmpdb_login;
 	wtmpdb_logout;
+	wtmpdb_read_all;
 	wtmpdb_timespec2usec;
   local: *;
 };
