@@ -50,7 +50,7 @@ test_args (const char *db_path, const char *user, const char *tty,
   clock_gettime (CLOCK_REALTIME, &ts);
   login_t = wtmpdb_timespec2usec (ts);
 
-  if ((id = wtmpdb_login (db_path, USER_PROCESS, user, getpid(),
+  if ((id = wtmpdb_login (db_path, USER_PROCESS, user,
 			  login_t, tty, rhost, service, &error)) < 0)
     {
       if (error)

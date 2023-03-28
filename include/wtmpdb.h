@@ -47,7 +47,7 @@ extern int64_t logwtmpdb (const char *db_path, const char *tty,
 		          const char *name, const char *host,
 		          const char *service, char **error);
 extern int64_t wtmpdb_login (const char *db_path, int type,
-			     const char *user, pid_t pid, usec_t login,
+			     const char *user, usec_t login,
 			     const char *tty, const char *rhost,
 			     const char *service, char **error);
 extern int wtmpdb_logout (const char *db_path, int64_t id, usec_t logout,

@@ -52,7 +52,6 @@ int64_t
 logwtmpdb (const char *db_path, const char *tty, const char *name,
 	   const char *host, const char *service, char **error)
 {
-  pid_t pid = getpid ();
   int64_t retval = -1;
   struct timespec ts;
 
@@ -66,8 +65,7 @@ logwtmpdb (const char *db_path, const char *tty, const char *name,
   if (name != NULL && strlen (name) > 0)
     { /* login */
       retval = wtmpdb_login (db_path ? db_path : _PATH_WTMPDB, USER_PROCESS,
-			     name, pid, time, tty,
-			     host, service, error);
+			     name, time, tty, host, service, error);
     }
   else
     { /* logout */

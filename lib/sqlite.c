@@ -75,14 +75,14 @@ open_database_rw (const char *path, char **error)
 
 /* Add a new entry. Returns ID (>=0) on success, -1 on failure. */
 static int64_t
-add_entry (sqlite3 *db, int type, const char *user, pid_t pid,
+add_entry (sqlite3 *db, int type, const char *user, 
 	   usec_t login, const char *tty, const char *rhost,
 	   const char *service, char **error)
 {
   char *err_msg = NULL;
   sqlite3_stmt *res;
-  char *sql_table = "CREATE TABLE IF NOT EXISTS wtmp(ID INTEGER PRIMARY KEY, Type INTEGER, User TEXT NOT NULL, PID INTEGER, Login INTEGER, Logout INTEGER, TTY TEXT, RemoteHost TEXT, Service TEXT) STRICT;";
-  char *sql_insert = "INSERT INTO wtmp (Type,User,PID,Login,TTY,RemoteHost,Service) VALUES(?,?,?,?,?,?,?);";
+  char *sql_table = "CREATE TABLE IF NOT EXISTS wtmp(ID INTEGER PRIMARY KEY, Type INTEGER, User TEXT NOT NULL, Login INTEGER, Logout INTEGER, TTY TEXT, RemoteHost TEXT, Service TEXT) STRICT;";
+  char *sql_insert = "INSERT INTO wtmp (Type,User,Login,TTY,RemoteHost,Service) VALUES(?,?,?,?,?,?);";
 
   if (sqlite3_exec (db, sql_table, 0, 0, &err_msg) != SQLITE_OK)
     {
@@ -126,18 +126,7 @@ add_entry (sqlite3 *db, int type, const char *user, pid_t pid,
       return -1;
     }
 
-  if (sqlite3_bind_int64 (res, 3, pid) != SQLITE_OK)
-    {
-      if (error)
-        if (asprintf (error, "Failed to create replace statement for PID: %s",
-                      sqlite3_errmsg (db)) < 0)
-          *error = strdup("Out of memory");
-
-      sqlite3_finalize(res);
-      return -1;
-    }
-
-  if (sqlite3_bind_int64 (res, 4, login) != SQLITE_OK)
+  if (sqlite3_bind_int64 (res, 3, login) != SQLITE_OK)
     {
       if (error)
         if (asprintf (error, "Failed to create replace statement for login time: %s",
@@ -148,7 +137,7 @@ add_entry (sqlite3 *db, int type, const char *user, pid_t pid,
       return -1;
     }
 
-  if (sqlite3_bind_text (res, 5, tty, -1, SQLITE_STATIC) != SQLITE_OK)
+  if (sqlite3_bind_text (res, 4, tty, -1, SQLITE_STATIC) != SQLITE_OK)
     {
       if (error)
         if (asprintf (error, "Failed to create replace statement for tty: %s",
@@ -159,7 +148,7 @@ add_entry (sqlite3 *db, int type, const char *user, pid_t pid,
       return -1;
     }
 
-  if (sqlite3_bind_text (res, 6, rhost, -1, SQLITE_STATIC) != SQLITE_OK)
+  if (sqlite3_bind_text (res, 5, rhost, -1, SQLITE_STATIC) != SQLITE_OK)
     {
       if (error)
         if (asprintf (error, "Failed to create replace statement for rhost: %s",
@@ -170,7 +159,7 @@ add_entry (sqlite3 *db, int type, const char *user, pid_t pid,
       return -1;
     }
 
-  if (sqlite3_bind_text (res, 7, service, -1, SQLITE_STATIC) != SQLITE_OK)
+  if (sqlite3_bind_text (res, 6, service, -1, SQLITE_STATIC) != SQLITE_OK)
     {
       if (error)
         if (asprintf (error, "Failed to create replace statement for service: %s",
@@ -205,7 +194,7 @@ add_entry (sqlite3 *db, int type, const char *user, pid_t pid,
   Returns 0 on success, -1 on failure.
  */
 int64_t
-wtmpdb_login (const char *db_path, int type, const char *user, pid_t pid,
+wtmpdb_login (const char *db_path, int type, const char *user,
 	      usec_t login, const char *tty, const char *rhost,
 	      const char *service, char **error)
 {
@@ -215,7 +204,7 @@ wtmpdb_login (const char *db_path, int type, const char *user, pid_t pid,
   if ((db = open_database_rw (db_path, error)) == NULL)
     return -1;
 
-  retval = add_entry (db, type, user, pid, login, tty, rhost, service, error);
+  retval = add_entry (db, type, user, login, tty, rhost, service, error);
 
   sqlite3_close (db);
 
