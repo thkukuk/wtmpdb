@@ -35,8 +35,7 @@
 #define EMPTY           0  /* No valid user accounting information.  */
 #define BOOT_TIME       1  /* Time of system boot.  */
 #define RUNLEVEL        2  /* The system's runlevel. Unused with systemd. */
-#define SHUTDOWN_TIME   3  /* Time of system shutdown. */
-#define USER_PROCESS    4  /* Normal process.  */
+#define USER_PROCESS    3  /* Normal process.  */
 
 typedef uint64_t usec_t;
 #define USEC_INFINITY ((usec_t) UINT64_MAX)

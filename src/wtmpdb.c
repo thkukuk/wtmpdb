@@ -33,6 +33,7 @@
 #include <string.h>
 #include <limits.h>
 #include <getopt.h>
+#include <sys/utsname.h>
 
 #include "wtmpdb.h"
 
@@ -43,6 +44,7 @@ static char *wtmpdb_path = _PATH_WTMPDB;
 #define TIMEFMT_HHMM  3
 
 static int64_t wtmp_start = INT64_MAX;
+static int after_reboot = 0;
 
 static void
 format_time (int fmt, char *dst, size_t dstlen, time_t t)
@@ -94,12 +96,13 @@ print_entry (void *unused __attribute__((__unused__)),
       exit (EXIT_FAILURE);
     }
 
+  const int type = atoi (argv[1]);
   const char *user = argv[2];
   const char *tty = argv[5];
   const char *host = argv[6]?argv[6]:"";
 
-  int64_t login_t = strtol(argv[3], &endptr, 10);
-  if ((errno == ERANGE && (login_t == LONG_MAX || login_t == LONG_MIN))
+  int64_t login_t = strtoll(argv[3], &endptr, 10);
+  if ((errno == ERANGE && (login_t == INT64_MAX || login_t == INT64_MIN))
       || (endptr == argv[1]) || (*endptr != '\0'))
     fprintf (stderr, "Invalid numeric time entry for 'login': '%s'\n",
 	     argv[3]);
@@ -108,8 +111,8 @@ print_entry (void *unused __attribute__((__unused__)),
 
   if (argv[4])
     {
-      int64_t logout_t = strtol(argv[4], &endptr, 10);
-      if ((errno == ERANGE && (logout_t == LONG_MAX || logout_t == LONG_MIN))
+      int64_t logout_t = strtoll(argv[4], &endptr, 10);
+      if ((errno == ERANGE && (logout_t == INT64_MAX || logout_t == INT64_MIN))
 	  || (endptr == argv[1]) || (*endptr != '\0'))
 	fprintf (stderr, "Invalid numeric time entry for 'logout': '%s'\n",
 		 argv[4]);
@@ -128,10 +131,37 @@ print_entry (void *unused __attribute__((__unused__)),
       else
 	snprintf (length, sizeof(length), " (00:%02d)", mins);
     }
-  else
+  else /* login but no logout */
     {
-      snprintf (logouttime, sizeof (logouttime), "  still");
-      snprintf(length, sizeof(length), "logged in");
+      if (after_reboot)
+	{
+	  snprintf (logouttime, sizeof (logouttime), "crash");
+	  length[0] = '\0';
+	}
+      else
+	{
+	  switch (type)
+	    {
+	    case USER_PROCESS:
+	      snprintf (logouttime, sizeof (logouttime), "still");
+	      snprintf(length, sizeof(length), "logged in");
+	      break;
+	    case BOOT_TIME:
+	      snprintf (logouttime, sizeof (logouttime), "still");
+	      snprintf(length, sizeof(length), "running");
+	      break;
+	    default:
+	      snprintf (logouttime, sizeof (logouttime), "ERROR");
+	      snprintf(length, sizeof(length), "Unknown: %d", type);
+	      break;
+	    }
+	}
+    }
+
+  if (type == BOOT_TIME)
+    {
+      tty = "system boot";
+      after_reboot = 1;
     }
 
   if (asprintf (&line, "%-8.*s %-12.12s %-16.*s %-*.*s - %-*.*s %s\n",
@@ -160,8 +190,14 @@ usage (int retval)
   FILE *output = (retval != EXIT_SUCCESS) ? stderr : stdout;
 
   fprintf (output, "Usage: wtmpdb [command] [options]\n");
-  fputs ("Commands: last\n\n", output);
+  fputs ("Commands: last, boot, shutdown\n\n", output);
   fputs ("Options for last:\n", output);
+  fputs ("  -d, --database FILE   Use FILE as wtmpdb database\n", output);
+  fputs ("\n", output);
+  fputs ("Options for boot (writes boot entry to wtmpdb):\n", output);
+  fputs ("  -d, --database FILE   Use FILE as wtmpdb database\n", output);
+  fputs ("\n", output);
+  fputs ("Options for shutdown (writes shutdown time to wtmpdb):\n", output);
   fputs ("  -d, --database FILE   Use FILE as wtmpdb database\n", output);
   fputs ("\n", output);
   fputs ("Generic options:\n", output);
@@ -201,7 +237,7 @@ main_last (int argc, char **argv)
     }
 
   if (wtmpdb_read_all (wtmpdb_path, print_entry, &error) != 0)
-        {
+    {
       if (error)
         {
           fprintf (stderr, "%s\n", error);
@@ -221,6 +257,122 @@ main_last (int argc, char **argv)
   return EXIT_SUCCESS;
 }
 
+static int
+main_boot (int argc, char **argv)
+{
+  struct option const longopts[] = {
+    {"database", required_argument, NULL, 'd'},
+    {NULL, 0, NULL, '\0'}
+  };
+  char *error = NULL;
+  int c;
+
+  while ((c = getopt_long (argc, argv, "d:", longopts, NULL)) != -1)
+    {
+      switch (c)
+        {
+        case 'd':
+          wtmpdb_path = optarg;
+          break;
+        default:
+          usage (EXIT_FAILURE);
+          break;
+        }
+    }
+
+  if (argc > optind)
+    {
+      fprintf (stderr, "Unexpected argument: %s\n", argv[optind]);
+      usage (EXIT_FAILURE);
+    }
+
+  struct utsname uts;
+  uname(&uts);
+
+  struct timespec ts;
+  clock_gettime (CLOCK_REALTIME, &ts);
+  int64_t time = wtmpdb_timespec2usec (ts);
+
+  if (wtmpdb_login (wtmpdb_path, BOOT_TIME, "reboot", time, "~", uts.release,
+		    NULL, &error) < 0)
+    {
+      if (error)
+        {
+          fprintf (stderr, "%s\n", error);
+          free (error);
+        }
+      else
+        fprintf (stderr, "Couldn't write boot entry\n");
+
+      exit (EXIT_FAILURE);
+    }
+
+  return EXIT_SUCCESS;
+}
+
+static int
+main_shutdown (int argc, char **argv)
+{
+  struct option const longopts[] = {
+    {"database", required_argument, NULL, 'd'},
+    {NULL, 0, NULL, '\0'}
+  };
+  char *error = NULL;
+  int c;
+
+  while ((c = getopt_long (argc, argv, "d:", longopts, NULL)) != -1)
+    {
+      switch (c)
+        {
+        case 'd':
+          wtmpdb_path = optarg;
+          break;
+        default:
+          usage (EXIT_FAILURE);
+          break;
+        }
+    }
+
+  if (argc > optind)
+    {
+      fprintf (stderr, "Unexpected argument: %s\n", argv[optind]);
+      usage (EXIT_FAILURE);
+    }
+
+  int64_t id = wtmpdb_get_id (wtmpdb_path, "~", &error);
+  if (id < 0)
+    {
+      if (error)
+        {
+          fprintf (stderr, "%s\n", error);
+          free (error);
+        }
+      else
+        fprintf (stderr, "Couldn't get ID for reboot entry\n");
+
+      exit (EXIT_FAILURE);
+    }
+
+  struct timespec ts;
+  clock_gettime (CLOCK_REALTIME, &ts);
+  int64_t time = wtmpdb_timespec2usec (ts);
+
+  if (wtmpdb_logout (wtmpdb_path, id, time, &error) < 0)
+    {
+      if (error)
+        {
+          fprintf (stderr, "%s\n", error);
+          free (error);
+        }
+      else
+        fprintf (stderr, "Couldn't write shutdown entry\n");
+
+      exit (EXIT_FAILURE);
+    }
+
+  return EXIT_SUCCESS;
+}
+
 int
 main (int argc, char **argv)
 {
@@ -235,6 +387,10 @@ main (int argc, char **argv)
     usage (EXIT_SUCCESS);
   else if (strcmp (argv[1], "last") == 0)
     return main_last (--argc, ++argv);
+  else if (strcmp (argv[1], "reboot") == 0)
+    return main_boot (--argc, ++argv);
+  else if (strcmp (argv[1], "shutdown") == 0)
+    return main_shutdown (--argc, ++argv);
 
   while ((c = getopt_long (argc, argv, "hv", longopts, NULL)) != -1)
     {

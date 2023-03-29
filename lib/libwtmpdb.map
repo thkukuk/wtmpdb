@@ -5,5 +5,6 @@ LIBWTMPDB_0.1 {
 	wtmpdb_logout;
 	wtmpdb_read_all;
 	wtmpdb_timespec2usec;
+	wtmpdb_get_id;
   local: *;
 };
