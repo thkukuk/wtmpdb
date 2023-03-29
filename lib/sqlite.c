@@ -382,7 +382,7 @@ wtmpdb_read_all  (const char *db_path,
   if ((db = open_database_ro (db_path, error)) == NULL)
     return -1;
 
-  char *sql = "SELECT * FROM wtmp";
+  char *sql = "SELECT * FROM wtmp ORDER BY Login DESC";
 
   if (sqlite3_exec (db, sql, cb_func, NULL, &err_msg) != SQLITE_OK)
     {
