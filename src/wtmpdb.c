@@ -387,7 +387,7 @@ main (int argc, char **argv)
     usage (EXIT_SUCCESS);
   else if (strcmp (argv[1], "last") == 0)
     return main_last (--argc, ++argv);
-  else if (strcmp (argv[1], "reboot") == 0)
+  else if (strcmp (argv[1], "boot") == 0)
     return main_boot (--argc, ++argv);
   else if (strcmp (argv[1], "shutdown") == 0)
     return main_shutdown (--argc, ++argv);
