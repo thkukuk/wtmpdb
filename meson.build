@@ -22,7 +22,9 @@ add_project_arguments(['-D_GNU_SOURCE=1',
 		       '-DXTSTRINGDEFINES',
 		       '-D_FORTIFY_SOURCE=2',
                        '-D_FILE_OFFSET_BITS=64',
-                       '-D_TIME_BITS=64'], language : 'c')
+                       '-D_TIME_BITS=64',
+                       '-DPROJECT_VERSION="@0@"'.format(meson.project_version()
+)], language : 'c')
 
 possible_cc_flags = [
                   '-flto=auto',
@@ -131,13 +133,13 @@ pam_wtmpdb = shared_library(
   install_dir : pamlibdir
 )
 
-#last_wtmpdb_c = ['src/last_wtmpdb.c']
+wtmpdb_c = ['src/wtmpdb.c']
 
-#executable('last-wtmpdb', 
-#           last_wtmpdb_c, 
-#           include_directories : inc,
-#           link_with : libwtmpdb,
-#           install : true)
+executable('wtmpdb', 
+           wtmpdb_c, 
+           include_directories : inc,
+           link_with : libwtmpdb,
+           install : true)
 
 subdir('tmpfiles.d')
 #subdir('units')
