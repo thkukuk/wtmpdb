@@ -46,6 +46,9 @@ static char *wtmpdb_path = _PATH_WTMPDB;
 static int64_t wtmp_start = INT64_MAX;
 static int after_reboot = 0;
 
+/* options for last */
+static int hostlast = 0;
+
 static void
 format_time (int fmt, char *dst, size_t dstlen, time_t t)
 {
@@ -164,17 +167,31 @@ print_entry (void *unused __attribute__((__unused__)),
       after_reboot = 1;
     }
 
-  if (asprintf (&line, "%-8.*s %-12.12s %-16.*s %-*.*s - %-*.*s %s\n",
-		name_len, user, tty,
-		host_len, host,
-		login_len, login_len, logintime,
-		logout_len, logout_len, logouttime,
-		length) < 0)
+  if (hostlast)
     {
-      fprintf (stderr, "Out f memory");
-      exit (EXIT_FAILURE);
+      if (asprintf (&line, "%-8.*s %-12.12s %-*.*s - %-*.*s %-12.12s %s\n",
+		    name_len, user, tty,
+		    login_len, login_len, logintime,
+		    logout_len, logout_len, logouttime,
+		    length, host) < 0)
+	{
+	  fprintf (stderr, "Out f memory");
+	  exit (EXIT_FAILURE);
+	}
     }
-
+  else
+    {
+      if (asprintf (&line, "%-8.*s %-12.12s %-16.*s %-*.*s - %-*.*s %s\n",
+		    name_len, user, tty,
+		    host_len, host,
+		    login_len, login_len, logintime,
+		    logout_len, logout_len, logouttime,
+		    length) < 0)
+	{
+	  fprintf (stderr, "Out f memory");
+	  exit (EXIT_FAILURE);
+	}
+    }
   printf ("%s", line);
   free (line);
 
@@ -192,13 +209,14 @@ usage (int retval)
   fprintf (output, "Usage: wtmpdb [command] [options]\n");
   fputs ("Commands: last, boot, shutdown\n\n", output);
   fputs ("Options for last:\n", output);
-  fputs ("  -d, --database FILE   Use FILE as wtmpdb database\n", output);
+  fputs ("  -a, --lasthost    Display hostnames as last entry\n", output);
+  fputs ("  -f, --file FILE   Use FILE as wtmpdb database\n", output);
   fputs ("\n", output);
   fputs ("Options for boot (writes boot entry to wtmpdb):\n", output);
-  fputs ("  -d, --database FILE   Use FILE as wtmpdb database\n", output);
+  fputs ("  -f, --file FILE   Use FILE as wtmpdb database\n", output);
   fputs ("\n", output);
   fputs ("Options for shutdown (writes shutdown time to wtmpdb):\n", output);
-  fputs ("  -d, --database FILE   Use FILE as wtmpdb database\n", output);
+  fputs ("  -f, --file FILE   Use FILE as wtmpdb database\n", output);
   fputs ("\n", output);
   fputs ("Generic options:\n", output);
   fputs ("  -h, --help            Display this help message and exit\n", output);
@@ -211,17 +229,21 @@ static int
 main_last (int argc, char **argv)
 {
   struct option const longopts[] = {
+    {"hostlast", no_argument, NULL, 'a'},
     {"file", required_argument, NULL, 'f'},
     {NULL, 0, NULL, '\0'}
   };
   char *error = NULL;
   int c;
 
-  while ((c = getopt_long (argc, argv, "f:", longopts, NULL)) != -1)
+  while ((c = getopt_long (argc, argv, "af:", longopts, NULL)) != -1)
     {
       switch (c)
         {
-        case 'd':
+	case 'a':
+	  hostlast = 1;
+	  break;
+        case 'f':
           wtmpdb_path = optarg;
           break;
         default:
