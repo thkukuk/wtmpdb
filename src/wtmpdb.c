@@ -211,13 +211,13 @@ static int
 main_last (int argc, char **argv)
 {
   struct option const longopts[] = {
-    {"database", required_argument, NULL, 'd'},
+    {"file", required_argument, NULL, 'f'},
     {NULL, 0, NULL, '\0'}
   };
   char *error = NULL;
   int c;
 
-  while ((c = getopt_long (argc, argv, "d:", longopts, NULL)) != -1)
+  while ((c = getopt_long (argc, argv, "f:", longopts, NULL)) != -1)
     {
       switch (c)
         {
@@ -261,13 +261,13 @@ static int
 main_boot (int argc, char **argv)
 {
   struct option const longopts[] = {
-    {"database", required_argument, NULL, 'd'},
+    {"file", required_argument, NULL, 'f'},
     {NULL, 0, NULL, '\0'}
   };
   char *error = NULL;
   int c;
 
-  while ((c = getopt_long (argc, argv, "d:", longopts, NULL)) != -1)
+  while ((c = getopt_long (argc, argv, "f:", longopts, NULL)) != -1)
     {
       switch (c)
         {
@@ -314,13 +314,13 @@ static int
 main_shutdown (int argc, char **argv)
 {
   struct option const longopts[] = {
-    {"database", required_argument, NULL, 'd'},
+    {"file", required_argument, NULL, 'f'},
     {NULL, 0, NULL, '\0'}
   };
   char *error = NULL;
   int c;
 
-  while ((c = getopt_long (argc, argv, "d:", longopts, NULL)) != -1)
+  while ((c = getopt_long (argc, argv, "f:", longopts, NULL)) != -1)
     {
       switch (c)
         {
