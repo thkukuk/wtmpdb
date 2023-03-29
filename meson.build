@@ -142,7 +142,7 @@ executable('wtmpdb',
            install : true)
 
 subdir('tmpfiles.d')
-#subdir('units')
+subdir('units')
 
 # Unit tests
 subdir('tests')

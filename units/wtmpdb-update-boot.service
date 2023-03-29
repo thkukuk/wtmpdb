@@ -1,0 +1,17 @@
+[Unit]
+Description=Write boot and shutdown times into wtmpdb
+Documentation=man:wtmpdb(8)
+DefaultDependencies=no
+RequiresMountsFor=/var/lib/wtmpdb
+Conflicts=shutdown.target
+After=systemd-remount-fs.service systemd-tmpfiles-setup.service
+Before=sysinit.target shutdown.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/wtmpdb boot
+ExecStop=/usr/sbin/wtmpdb shutdown
+RemainAfterExit=true
+
+[Install]
+WantedBy=default.target
