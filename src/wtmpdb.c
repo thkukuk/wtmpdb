@@ -48,6 +48,7 @@ static int after_reboot = 0;
 
 /* options for last */
 static int hostlast = 0;
+static int nohostname = 0;
 
 static void
 format_time (int fmt, char *dst, size_t dstlen, time_t t)
@@ -167,13 +168,13 @@ print_entry (void *unused __attribute__((__unused__)),
       after_reboot = 1;
     }
 
-  if (hostlast)
+  if (nohostname)
     {
-      if (asprintf (&line, "%-8.*s %-12.12s %-*.*s - %-*.*s %-12.12s %s\n",
+      if (asprintf (&line, "%-8.*s %-12.12s %-*.*s - %-*.*s %s\n",
 		    name_len, user, tty,
 		    login_len, login_len, logintime,
 		    logout_len, logout_len, logouttime,
-		    length, host) < 0)
+		    length) < 0)
 	{
 	  fprintf (stderr, "Out f memory");
 	  exit (EXIT_FAILURE);
@@ -181,15 +182,30 @@ print_entry (void *unused __attribute__((__unused__)),
     }
   else
     {
-      if (asprintf (&line, "%-8.*s %-12.12s %-16.*s %-*.*s - %-*.*s %s\n",
-		    name_len, user, tty,
-		    host_len, host,
-		    login_len, login_len, logintime,
-		    logout_len, logout_len, logouttime,
-		    length) < 0)
+      if (hostlast)
 	{
-	  fprintf (stderr, "Out f memory");
-	  exit (EXIT_FAILURE);
+	  if (asprintf (&line, "%-8.*s %-12.12s %-*.*s - %-*.*s %-12.12s %s\n",
+			name_len, user, tty,
+			login_len, login_len, logintime,
+			logout_len, logout_len, logouttime,
+			length, host) < 0)
+	    {
+	      fprintf (stderr, "Out f memory");
+	      exit (EXIT_FAILURE);
+	    }
+	}
+      else
+	{
+	  if (asprintf (&line, "%-8.*s %-12.12s %-16.*s %-*.*s - %-*.*s %s\n",
+			name_len, user, tty,
+			host_len, host,
+			login_len, login_len, logintime,
+			logout_len, logout_len, logouttime,
+			length) < 0)
+	    {
+	      fprintf (stderr, "Out f memory");
+	      exit (EXIT_FAILURE);
+	    }
 	}
     }
   printf ("%s", line);
@@ -211,6 +227,7 @@ usage (int retval)
   fputs ("Options for last:\n", output);
   fputs ("  -a, --lasthost    Display hostnames as last entry\n", output);
   fputs ("  -f, --file FILE   Use FILE as wtmpdb database\n", output);
+  fputs ("  -R, --nohostname  Don't display hostname\n", output);
   fputs ("\n", output);
   fputs ("Options for boot (writes boot entry to wtmpdb):\n", output);
   fputs ("  -f, --file FILE   Use FILE as wtmpdb database\n", output);
@@ -231,12 +248,13 @@ main_last (int argc, char **argv)
   struct option const longopts[] = {
     {"hostlast", no_argument, NULL, 'a'},
     {"file", required_argument, NULL, 'f'},
+    {"nohostname", no_argument, NULL, 'R'},
     {NULL, 0, NULL, '\0'}
   };
   char *error = NULL;
   int c;
 
-  while ((c = getopt_long (argc, argv, "af:", longopts, NULL)) != -1)
+  while ((c = getopt_long (argc, argv, "af:R", longopts, NULL)) != -1)
     {
       switch (c)
         {
@@ -246,6 +264,9 @@ main_last (int argc, char **argv)
         case 'f':
           wtmpdb_path = optarg;
           break;
+	case 'R':
+	  nohostname = 1;
+	  break;
         default:
           usage (EXIT_FAILURE);
           break;
@@ -255,6 +276,12 @@ main_last (int argc, char **argv)
   if (argc > optind)
     {
       fprintf (stderr, "Unexpected argument: %s\n", argv[optind]);
+      usage (EXIT_FAILURE);
+    }
+
+  if (nohostname && hostlast)
+    {
+      fprintf (stderr, "The options -a and -R cannot be used together.\n");
       usage (EXIT_FAILURE);
     }
 
