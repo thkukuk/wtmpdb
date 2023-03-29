@@ -9,8 +9,8 @@ Before=sysinit.target shutdown.target
 
 [Service]
 Type=oneshot
-ExecStart=/usr/sbin/wtmpdb boot
-ExecStop=/usr/sbin/wtmpdb shutdown
+ExecStart=/usr/bin/wtmpdb boot
+ExecStop=/usr/bin/wtmpdb shutdown
 RemainAfterExit=true
 
 [Install]
