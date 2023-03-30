@@ -49,6 +49,12 @@ static int after_reboot = 0;
 /* options for last */
 static int hostlast = 0;
 static int nohostname = 0;
+static const int name_len = 8; /* LAST_LOGIN_LEN */
+static int login_fmt = TIMEFMT_SHORT;
+static int login_len = 16; /* 16 = short, 24 = full */
+static int logout_fmt = TIMEFMT_HHMM;
+static int logout_len = 5; /* 5 = short, 24 = full */
+static const int host_len = 16; /* LAST_DOMAIN_LEN */
 
 static void
 format_time (int fmt, char *dst, size_t dstlen, time_t t)
@@ -80,10 +86,6 @@ static int
 print_entry (void *unused __attribute__((__unused__)),
 	     int argc, char **argv, char **azColName)
 {
-  const int name_len = 8; /* LAST_LOGIN_LEN */
-  const int login_len = 16; /* 16 = short, 24 = full */
-  const int logout_len = 5; /* 5 = short, 24 = full */
-  const int host_len = 16; /* LAST_DOMAIN_LEN */
   char logintime[32]; /* LAST_TIMESTAMP_LEN */
   char logouttime[32]; /* LAST_TIMESTAMP_LEN */
   char length[32]; /* LAST_TIMESTAMP_LEN */
@@ -110,7 +112,7 @@ print_entry (void *unused __attribute__((__unused__)),
       || (endptr == argv[1]) || (*endptr != '\0'))
     fprintf (stderr, "Invalid numeric time entry for 'login': '%s'\n",
 	     argv[3]);
-  format_time (TIMEFMT_SHORT, logintime, sizeof (logintime),
+  format_time (login_fmt, logintime, sizeof (logintime),
 	       login_t/USEC_PER_SEC);
 
   if (argv[4])
@@ -120,7 +122,7 @@ print_entry (void *unused __attribute__((__unused__)),
 	  || (endptr == argv[1]) || (*endptr != '\0'))
 	fprintf (stderr, "Invalid numeric time entry for 'logout': '%s'\n",
 		 argv[4]);
-      format_time (TIMEFMT_HHMM, logouttime, sizeof (logouttime),
+      format_time (logout_fmt, logouttime, sizeof (logouttime),
 		   logout_t/USEC_PER_SEC);
 
       int64_t secs = (logout_t - login_t)/USEC_PER_SEC;
@@ -147,12 +149,28 @@ print_entry (void *unused __attribute__((__unused__)),
 	  switch (type)
 	    {
 	    case USER_PROCESS:
-	      snprintf (logouttime, sizeof (logouttime), "still");
-	      snprintf(length, sizeof(length), "logged in");
+	      if (logout_fmt == TIMEFMT_HHMM)
+		{
+		  snprintf (logouttime, sizeof (logouttime), "still");
+		  snprintf(length, sizeof(length), "logged in");
+		}
+	      else
+		{
+		  snprintf (logouttime, sizeof (logouttime), "still logged in");
+		  length[0] = '\0';
+		}
 	      break;
 	    case BOOT_TIME:
-	      snprintf (logouttime, sizeof (logouttime), "still");
-	      snprintf(length, sizeof(length), "running");
+	      if (logout_fmt == TIMEFMT_HHMM)
+		{
+		  snprintf (logouttime, sizeof (logouttime), "still");
+		  snprintf(length, sizeof(length), "running");
+		}
+	      else
+		{
+		  snprintf (logouttime, sizeof (logouttime), "still running");
+		  length[0] = '\0';
+		}
 	      break;
 	    default:
 	      snprintf (logouttime, sizeof (logouttime), "ERROR");
@@ -227,6 +245,7 @@ usage (int retval)
   fputs ("Options for last:\n", output);
   fputs ("  -a, --lasthost    Display hostnames as last entry\n", output);
   fputs ("  -f, --file FILE   Use FILE as wtmpdb database\n", output);
+  fputs ("  -F, --fulltimes   Display full times and dates\n", output);
   fputs ("  -R, --nohostname  Don't display hostname\n", output);
   fputs ("\n", output);
   fputs ("Options for boot (writes boot entry to wtmpdb):\n", output);
@@ -248,13 +267,14 @@ main_last (int argc, char **argv)
   struct option const longopts[] = {
     {"hostlast", no_argument, NULL, 'a'},
     {"file", required_argument, NULL, 'f'},
+    {"fulltimes", no_argument, NULL, 'F'},
     {"nohostname", no_argument, NULL, 'R'},
     {NULL, 0, NULL, '\0'}
   };
   char *error = NULL;
   int c;
 
-  while ((c = getopt_long (argc, argv, "af:R", longopts, NULL)) != -1)
+  while ((c = getopt_long (argc, argv, "af:FR", longopts, NULL)) != -1)
     {
       switch (c)
         {
@@ -264,6 +284,12 @@ main_last (int argc, char **argv)
         case 'f':
           wtmpdb_path = optarg;
           break;
+	case 'F':
+	  login_fmt = TIMEFMT_CTIME;
+	  login_len = 24;
+	  logout_fmt = TIMEFMT_CTIME;
+	  logout_len = 24;
+	  break;
 	case 'R':
 	  nohostname = 1;
 	  break;
