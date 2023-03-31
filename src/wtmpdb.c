@@ -25,6 +25,8 @@
   POSSIBILITY OF SUCH DAMAGE.
 */
 
+#include "config.h"
+
 #include <time.h>
 #include <ctype.h>
 #include <errno.h>
@@ -34,6 +36,10 @@
 #include <limits.h>
 #include <getopt.h>
 #include <sys/utsname.h>
+
+#if HAVE_AUDIT
+#include <libaudit.h>
+#endif
 
 #include "wtmpdb.h"
 
@@ -332,6 +338,26 @@ main_last (int argc, char **argv)
   return EXIT_SUCCESS;
 }
 
+#if HAVE_AUDIT
+static void
+log_audit (int type)
+{
+  int audit_fd = audit_open();
+
+  if (audit_fd < 0)
+    {
+      fprintf (stderr, "Failed to connect to audit daemon: %s\n",
+	       strerror (errno));
+      return;
+    }
+
+  if (audit_log_user_comm_message(audit_fd, type, "", "wtmpdb", NULL, NULL, NULL, 1) < 0)
+    fprintf (stderr, "Failed to send audit message: %s",
+	     strerror (errno));
+  audit_close (audit_fd);
+}
+#endif
+
 static int
 main_boot (int argc, char **argv)
 {
@@ -367,6 +393,11 @@ main_boot (int argc, char **argv)
   struct timespec ts;
   clock_gettime (CLOCK_REALTIME, &ts);
   int64_t time = wtmpdb_timespec2usec (ts);
+
+
+#if HAVE_AUDIT
+  log_audit (AUDIT_SYSTEM_BOOT);
+#endif
 
   if (wtmpdb_login (wtmpdb_path, BOOT_TIME, "reboot", time, "~", uts.release,
 		    NULL, &error) < 0)
@@ -413,6 +444,10 @@ main_shutdown (int argc, char **argv)
       fprintf (stderr, "Unexpected argument: %s\n", argv[optind]);
       usage (EXIT_FAILURE);
     }
+
+#if HAVE_AUDIT
+  log_audit (AUDIT_SYSTEM_SHUTDOWN);
+#endif
 
   int64_t id = wtmpdb_get_id (wtmpdb_path, "~", &error);
   if (id < 0)

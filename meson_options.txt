@@ -9,4 +9,6 @@ option('pamlibdir', type : 'string',
 option('man', type : 'combo', choices : ['auto', 'true', 'false'],
        value : 'auto',
        description : 'build and install man pages')
-
+option('audit', type : 'combo', choices : ['auto', 'true', 'false'],
+       value : 'auto',
+       description : 'libaudit support')

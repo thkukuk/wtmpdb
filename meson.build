@@ -14,6 +14,9 @@ project(
   version : '0.1.0',
 )
 
+conf = configuration_data()
+conf.set_quoted('PROJECT_VERSION', meson.project_version())
+
 cc = meson.get_compiler('c')
 pkg = import('pkgconfig')
 inc = include_directories('include')
@@ -22,9 +25,7 @@ add_project_arguments(['-D_GNU_SOURCE=1',
 		       '-DXTSTRINGDEFINES',
 		       '-D_FORTIFY_SOURCE=2',
                        '-D_FILE_OFFSET_BITS=64',
-                       '-D_TIME_BITS=64',
-                       '-DPROJECT_VERSION="@0@"'.format(meson.project_version()
-)], language : 'c')
+                       '-D_TIME_BITS=64'], language : 'c')
 
 possible_cc_flags = [
                   '-flto=auto',
@@ -92,6 +93,16 @@ tmpfilesdir = prefixdir / 'lib/tmpfiles.d'
 libpam = cc.find_library('pam')
 libsqlite3 = cc.find_library('sqlite3')
 
+want_audit = get_option('audit')
+if want_audit != 'false'
+        libaudit = dependency('audit', required : want_audit == 'true')
+        have = libaudit.found()
+else
+        have = false
+        libaudit = []
+endif
+conf.set10('HAVE_AUDIT', have)
+
 libwtmpdb_c = files('lib/logwtmpdb.c', 'lib/sqlite.c')
 libwtmpdb_map = 'lib/libwtmpdb.map'
 libwtmpdb_map_version = '-Wl,--version-script,@0@/@1@'.format(meson.current_source_dir(), libwtmpdb_map)
@@ -135,10 +146,11 @@ pam_wtmpdb = shared_library(
 
 wtmpdb_c = ['src/wtmpdb.c']
 
-executable('wtmpdb', 
-           wtmpdb_c, 
+executable('wtmpdb',
+           wtmpdb_c,
            include_directories : inc,
            link_with : libwtmpdb,
+           dependencies : [libaudit],
            install : true)
 
 subdir('tmpfiles.d')
@@ -149,3 +161,7 @@ subdir('tests')
 
 # Manual pages
 #subdir('man')
+
+config_h = configure_file(
+  output : 'config.h',
+  configuration : conf)
