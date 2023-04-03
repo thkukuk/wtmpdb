@@ -55,6 +55,7 @@ static int after_reboot = 0;
 /* options for last */
 static int hostlast = 0;
 static int nohostname = 0;
+static int noservice = 1;
 static const int name_len = 8; /* LAST_LOGIN_LEN */
 static int login_fmt = TIMEFMT_SHORT;
 static int login_len = 16; /* 16 = short, 24 = full */
@@ -110,8 +111,9 @@ print_entry (void *unused __attribute__((__unused__)),
 
   const int type = atoi (argv[1]);
   const char *user = argv[2];
-  const char *tty = argv[5];
+  const char *tty = argv[5]?argv[5]:"?";
   const char *host = argv[6]?argv[6]:"";
+  const char *service = argv[7]?argv[7]:"";
 
   int64_t login_t = strtoll(argv[3], &endptr, 10);
   if ((errno == ERANGE && (login_t == INT64_MAX || login_t == INT64_MIN))
@@ -192,10 +194,22 @@ print_entry (void *unused __attribute__((__unused__)),
       after_reboot = 1;
     }
 
+  char *print_service = NULL;
+  if (noservice)
+    print_service = strdup ("");
+  else
+    {
+      if (asprintf (&print_service, " %-12.12s", service) < 0)
+	{
+	  fprintf (stderr, "Out f memory");
+	  exit (EXIT_FAILURE);
+	}
+    }
+
   if (nohostname)
     {
-      if (asprintf (&line, "%-8.*s %-12.12s %-*.*s - %-*.*s %s\n",
-		    name_len, user, tty,
+      if (asprintf (&line, "%-8.*s %-12.12s%s %-*.*s - %-*.*s %s\n",
+		    name_len, user, tty, print_service,
 		    login_len, login_len, logintime,
 		    logout_len, logout_len, logouttime,
 		    length) < 0)
@@ -208,8 +222,8 @@ print_entry (void *unused __attribute__((__unused__)),
     {
       if (hostlast)
 	{
-	  if (asprintf (&line, "%-8.*s %-12.12s %-*.*s - %-*.*s %-12.12s %s\n",
-			name_len, user, tty,
+	  if (asprintf (&line, "%-8.*s %-12.12s%s %-*.*s - %-*.*s %-12.12s %s\n",
+			name_len, user, tty, print_service,
 			login_len, login_len, logintime,
 			logout_len, logout_len, logouttime,
 			length, host) < 0)
@@ -220,9 +234,9 @@ print_entry (void *unused __attribute__((__unused__)),
 	}
       else
 	{
-	  if (asprintf (&line, "%-8.*s %-12.12s %-16.*s %-*.*s - %-*.*s %s\n",
+	  if (asprintf (&line, "%-8.*s %-12.12s %-16.*s%s %-*.*s - %-*.*s %s\n",
 			name_len, user, tty,
-			host_len, host,
+			host_len, host, print_service,
 			login_len, login_len, logintime,
 			logout_len, logout_len, logouttime,
 			length) < 0)
@@ -232,6 +246,8 @@ print_entry (void *unused __attribute__((__unused__)),
 	    }
 	}
     }
+  free (print_service);
+
   printf ("%s", line);
   free (line);
 
@@ -253,6 +269,7 @@ usage (int retval)
   fputs ("  -f, --file FILE   Use FILE as wtmpdb database\n", output);
   fputs ("  -F, --fulltimes   Display full times and dates\n", output);
   fputs ("  -R, --nohostname  Don't display hostname\n", output);
+  fputs ("  -S, --service     Display PAM service used to login\n", output);
   fputs ("\n", output);
   fputs ("Options for boot (writes boot entry to wtmpdb):\n", output);
   fputs ("  -f, --file FILE   Use FILE as wtmpdb database\n", output);
@@ -275,12 +292,13 @@ main_last (int argc, char **argv)
     {"file", required_argument, NULL, 'f'},
     {"fulltimes", no_argument, NULL, 'F'},
     {"nohostname", no_argument, NULL, 'R'},
+    {"service", no_argument, NULL, 'S'},
     {NULL, 0, NULL, '\0'}
   };
   char *error = NULL;
   int c;
 
-  while ((c = getopt_long (argc, argv, "af:FR", longopts, NULL)) != -1)
+  while ((c = getopt_long (argc, argv, "af:FRS", longopts, NULL)) != -1)
     {
       switch (c)
         {
@@ -298,6 +316,9 @@ main_last (int argc, char **argv)
 	  break;
 	case 'R':
 	  nohostname = 1;
+	  break;
+	case 'S':
+	  noservice = 0;
 	  break;
         default:
           usage (EXIT_FAILURE);
