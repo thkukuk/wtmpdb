@@ -182,11 +182,24 @@ pam_sm_open_session (pam_handle_t *pamh, int flags,
   void_str = NULL;
   retval = pam_get_item (pamh, PAM_RHOST, &void_str);
   if (retval != PAM_SUCCESS || void_str == NULL)
-    rhost = "";
+    {
+      void_str = NULL;
+      retval = pam_get_item (pamh, PAM_XDISPLAY, &void_str);
+      if (retval != PAM_SUCCESS || void_str == NULL)
+	rhost = "";
+      else
+	{
+	  rhost = void_str;
+	  if (ctrl & WTMPDB_DEBUG)
+	    pam_syslog (pamh, LOG_DEBUG, "rhost(PAM_XDISPLAY)=%s", rhost);
+	}
+    }
   else
-    rhost = void_str;
-  if (ctrl & WTMPDB_DEBUG)
-    pam_syslog (pamh, LOG_DEBUG, "rhost=%s", rhost);
+    {
+      rhost = void_str;
+      if (ctrl & WTMPDB_DEBUG)
+	pam_syslog (pamh, LOG_DEBUG, "rhost(PAM_RHOST)=%s", rhost);
+    }
 
   void_str = NULL;
   retval = pam_get_item (pamh, PAM_SERVICE, &void_str);
