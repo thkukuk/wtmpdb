@@ -1,2 +1,7 @@
+Version 0.2.0
+* pam_lastlog: support PAM_XDISPLAY
+* wtmpdb last: show PAM service on request
+* wtmpdb: log audit records for boot/shutdown
+
 Version 0.1.0
 * First release
