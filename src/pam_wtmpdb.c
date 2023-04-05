@@ -26,6 +26,7 @@
 */
 
 #include <time.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <syslog.h>
@@ -53,17 +54,32 @@ skip_prefix (const char *str, const char *prefix)
   return strncmp(str, prefix, prefix_len) ? NULL : str + prefix_len;
 }
 
+static char tty_buf[12];
+
 static const char *
 get_tty (pam_handle_t *pamh, int ctrl)
 {
   const void *void_str = NULL;
   const char *tty;
+  const char *xdg_vtnr;
 
   int retval = pam_get_item (pamh, PAM_TTY, &void_str);
   if (retval != PAM_SUCCESS || void_str == NULL)
     tty = "";
   else
     tty = void_str;
+
+  /* if PAM_TTY is not set or an X11 $DISPLAY, try XDG_VTNR */
+  if ((tty[0] == '\0' || strchr(tty, ':') != NULL) && (xdg_vtnr = pam_getenv (pamh, "XDG_VTNR")) != NULL)
+    {
+      int xdg_vtnr_nr = atoi (xdg_vtnr);
+      if (xdg_vtnr_nr > 0 && snprintf (tty_buf, sizeof(tty_buf), "tty%d", xdg_vtnr_nr) < (int) sizeof(tty_buf))
+        {
+          tty = tty_buf;
+          if (ctrl & WTMPDB_DEBUG)
+            pam_syslog (pamh, LOG_DEBUG, "tty(XDG_VTNR)=%s", tty);
+        }
+    }
 
   /* strip leading "/dev/" from tty. */
   const char *str = skip_prefix(tty, "/dev/");
