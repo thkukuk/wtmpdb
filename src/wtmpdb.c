@@ -89,6 +89,9 @@ format_time (int fmt, char *dst, size_t dstlen, time_t t)
     }
 }
 
+static unsigned int maxentries = 0; /* max number of entries to show */
+static unsigned int currentry = 0; /* number of entries already printed */
+
 static int
 print_entry (void *unused __attribute__((__unused__)),
 	     int argc, char **argv, char **azColName)
@@ -98,6 +101,12 @@ print_entry (void *unused __attribute__((__unused__)),
   char length[32]; /* LAST_TIMESTAMP_LEN */
   char *line;
   char *endptr;
+
+  /* Yes, it's waste of time to let sqlite iterate through all entries
+     even if we don't need more anymore, but telling sqlite we don't
+     want more leads to a "query aborted" error... */
+  if (maxentries && currentry >= maxentries)
+    return 0;
 
   /* ID, Type, User, LoginTime, LogoutTime, TTY, RemoteHost, Service */
   if (argc != 8)
@@ -254,6 +263,8 @@ print_entry (void *unused __attribute__((__unused__)),
   if (login_t < wtmp_start)
     wtmp_start = login_t;
 
+  currentry++;
+
   return 0;
 }
 
@@ -268,6 +279,7 @@ usage (int retval)
   fputs ("  -a, --lasthost    Display hostnames as last entry\n", output);
   fputs ("  -f, --file FILE   Use FILE as wtmpdb database\n", output);
   fputs ("  -F, --fulltimes   Display full times and dates\n", output);
+  fputs ("  -n, --limit N     Display only first N entries\n", output);
   fputs ("  -R, --nohostname  Don't display hostname\n", output);
   fputs ("  -S, --service     Display PAM service used to login\n", output);
   fputs ("\n", output);
@@ -291,6 +303,7 @@ main_last (int argc, char **argv)
     {"hostlast", no_argument, NULL, 'a'},
     {"file", required_argument, NULL, 'f'},
     {"fulltimes", no_argument, NULL, 'F'},
+    {"limit", required_argument, NULL, 'n'},
     {"nohostname", no_argument, NULL, 'R'},
     {"service", no_argument, NULL, 'S'},
     {NULL, 0, NULL, '\0'}
@@ -298,7 +311,7 @@ main_last (int argc, char **argv)
   char *error = NULL;
   int c;
 
-  while ((c = getopt_long (argc, argv, "af:FRS", longopts, NULL)) != -1)
+  while ((c = getopt_long (argc, argv, "af:Fn:RS", longopts, NULL)) != -1)
     {
       switch (c)
         {
@@ -313,6 +326,9 @@ main_last (int argc, char **argv)
 	  login_len = 24;
 	  logout_fmt = TIMEFMT_CTIME;
 	  logout_len = 24;
+	  break;
+	case 'n':
+	  maxentries = atoi (optarg);
 	  break;
 	case 'R':
 	  nohostname = 1;
