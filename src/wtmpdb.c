@@ -65,6 +65,8 @@ static const int host_len = 16; /* LAST_DOMAIN_LEN */
 static unsigned int maxentries = 0; /* max number of entries to show */
 static unsigned int currentry = 0; /* number of entries already printed */
 static time_t present = 0; /* Who was present at the specified time */
+static time_t since = 0; /* Who was logged in after this time? */
+static time_t until = 0; /* Who was logged in until this time? */
 
 static int
 parse_time (const char *str, time_t *time)
@@ -144,6 +146,12 @@ print_entry (void *unused __attribute__((__unused__)),
       || (endptr == argv[1]) || (*endptr != '\0'))
     fprintf (stderr, "Invalid numeric time entry for 'login': '%s'\n",
 	     argv[3]);
+
+  if (since && (since > (time_t)(login_t/USEC_PER_SEC)))
+    return 0;
+
+  if (until && (until < (time_t)(login_t/USEC_PER_SEC)))
+    return 0;
 
   if (present && (present < (time_t)(login_t/USEC_PER_SEC)))
     return 0;
@@ -307,6 +315,8 @@ usage (int retval)
   fputs ("  -p, --present TIME  Display who was present at TIME\n", output);
   fputs ("  -R, --nohostname    Don't display hostname\n", output);
   fputs ("  -S, --service       Display PAM service used to login\n", output);
+  fputs ("  -s, --since TIME    Display who was logged in after TIME\n", output);
+  fputs ("  -t, --until TIME    Display who was logged in until TIME\n", output);
   fputs ("TIME must be in the format \"YYYY-MM-DD HH:MM:SS\"\n", output);
   fputs ("\n", output);
   fputs ("Options for boot (writes boot entry to wtmpdb):\n", output);
@@ -332,13 +342,15 @@ main_last (int argc, char **argv)
     {"limit", required_argument, NULL, 'n'},
     {"present", required_argument, NULL, 'p'},
     {"nohostname", no_argument, NULL, 'R'},
+    {"since", required_argument, NULL, 's'},
     {"service", no_argument, NULL, 'S'},
+    {"until", required_argument, NULL, 't'},
     {NULL, 0, NULL, '\0'}
   };
   char *error = NULL;
   int c;
 
-  while ((c = getopt_long (argc, argv, "af:Fn:p:RS", longopts, NULL)) != -1)
+  while ((c = getopt_long (argc, argv, "af:Fn:p:RSs:t:", longopts, NULL)) != -1)
     {
       switch (c)
         {
@@ -367,8 +379,22 @@ main_last (int argc, char **argv)
 	case 'R':
 	  nohostname = 1;
 	  break;
+	case 's':
+	  if (parse_time (optarg, &since) < 0)
+	    {
+	      fprintf (stderr, "Invalid time value '%s'\n", optarg);
+	      exit (EXIT_FAILURE);
+	    }
+	  break;
 	case 'S':
 	  noservice = 0;
+	  break;
+	case 'u':
+	  if (parse_time (optarg, &until) < 0)
+	    {
+	      fprintf (stderr, "Invalid time value '%s'\n", optarg);
+	      exit (EXIT_FAILURE);
+	    }
 	  break;
         default:
           usage (EXIT_FAILURE);
