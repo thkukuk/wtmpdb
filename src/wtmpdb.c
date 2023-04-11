@@ -147,6 +147,9 @@ print_entry (void *unused __attribute__((__unused__)),
     fprintf (stderr, "Invalid numeric time entry for 'login': '%s'\n",
 	     argv[3]);
 
+  if (login_t < wtmp_start)
+    wtmp_start = login_t;
+
   if (since && (since > (time_t)(login_t/USEC_PER_SEC)))
     return 0;
 
@@ -291,9 +294,6 @@ print_entry (void *unused __attribute__((__unused__)),
 
   printf ("%s", line);
   free (line);
-
-  if (login_t < wtmp_start)
-    wtmp_start = login_t;
 
   currentry++;
 
