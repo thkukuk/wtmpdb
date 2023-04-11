@@ -153,6 +153,12 @@ executable('wtmpdb',
            dependencies : [libaudit],
            install : true)
 
+if get_option('compat-symlink')
+  install_symlink('last',
+                  pointing_to: 'wtmpdb',
+                  install_dir: 'bin')
+endif
+
 subdir('tmpfiles.d')
 subdir('units')
 

@@ -564,7 +564,9 @@ main (int argc, char **argv)
   };
   int c;
 
-  if (argc == 1)
+  if (strcmp (basename(argv[0]), "last") == 0)
+    return main_last (argc, argv);
+  else if (argc == 1)
     usage (EXIT_SUCCESS);
   else if (strcmp (argv[1], "last") == 0)
     return main_last (--argc, ++argv);
