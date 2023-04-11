@@ -49,7 +49,7 @@ static char *wtmpdb_path = _PATH_WTMPDB;
 #define TIMEFMT_SHORT 2
 #define TIMEFMT_HHMM  3
 
-static int64_t wtmp_start = INT64_MAX;
+static usec_t wtmp_start = UINT64_MAX;
 static int after_reboot = 0;
 
 /* options for last */
@@ -62,6 +62,24 @@ static int login_len = 16; /* 16 = short, 24 = full */
 static int logout_fmt = TIMEFMT_HHMM;
 static int logout_len = 5; /* 5 = short, 24 = full */
 static const int host_len = 16; /* LAST_DOMAIN_LEN */
+static unsigned int maxentries = 0; /* max number of entries to show */
+static unsigned int currentry = 0; /* number of entries already printed */
+static time_t present = 0; /* Who was present at the specified time */
+
+static int
+parse_time (const char *str, time_t *time)
+{
+  struct tm res;
+
+  char *r = strptime (str, "%Y-%m-%d %T",  &res);
+
+  if (r == NULL || *r != '\0')
+    return -1;
+
+  *time = mktime (&res);
+
+  return 0;
+}
 
 static void
 format_time (int fmt, char *dst, size_t dstlen, time_t t)
@@ -88,9 +106,6 @@ format_time (int fmt, char *dst, size_t dstlen, time_t t)
       abort ();
     }
 }
-
-static unsigned int maxentries = 0; /* max number of entries to show */
-static unsigned int currentry = 0; /* number of entries already printed */
 
 static int
 print_entry (void *unused __attribute__((__unused__)),
@@ -124,21 +139,30 @@ print_entry (void *unused __attribute__((__unused__)),
   const char *host = argv[6]?argv[6]:"";
   const char *service = argv[7]?argv[7]:"";
 
-  int64_t login_t = strtoll(argv[3], &endptr, 10);
-  if ((errno == ERANGE && (login_t == INT64_MAX || login_t == INT64_MIN))
+  usec_t login_t = strtoul(argv[3], &endptr, 10);
+  if ((errno == ERANGE && login_t == UINT64_MAX)
       || (endptr == argv[1]) || (*endptr != '\0'))
     fprintf (stderr, "Invalid numeric time entry for 'login': '%s'\n",
 	     argv[3]);
+
+  if (present && (present < (time_t)(login_t/USEC_PER_SEC)))
+    return 0;
+
   format_time (login_fmt, logintime, sizeof (logintime),
 	       login_t/USEC_PER_SEC);
 
   if (argv[4])
     {
-      int64_t logout_t = strtoll(argv[4], &endptr, 10);
-      if ((errno == ERANGE && (logout_t == INT64_MAX || logout_t == INT64_MIN))
+      int64_t logout_t = strtoul(argv[4], &endptr, 10);
+      if ((errno == ERANGE && logout_t == INT64_MAX)
 	  || (endptr == argv[1]) || (*endptr != '\0'))
 	fprintf (stderr, "Invalid numeric time entry for 'logout': '%s'\n",
 		 argv[4]);
+
+      if (present && (0 < (logout_t/USEC_PER_SEC)) &&
+	  ((time_t)(logout_t/USEC_PER_SEC) < present))
+	return 0;
+
       format_time (logout_fmt, logouttime, sizeof (logouttime),
 		   logout_t/USEC_PER_SEC);
 
@@ -276,22 +300,24 @@ usage (int retval)
   fprintf (output, "Usage: wtmpdb [command] [options]\n");
   fputs ("Commands: last, boot, shutdown\n\n", output);
   fputs ("Options for last:\n", output);
-  fputs ("  -a, --lasthost    Display hostnames as last entry\n", output);
-  fputs ("  -f, --file FILE   Use FILE as wtmpdb database\n", output);
-  fputs ("  -F, --fulltimes   Display full times and dates\n", output);
-  fputs ("  -n, --limit N     Display only first N entries\n", output);
-  fputs ("  -R, --nohostname  Don't display hostname\n", output);
-  fputs ("  -S, --service     Display PAM service used to login\n", output);
+  fputs ("  -a, --lasthost      Display hostnames as last entry\n", output);
+  fputs ("  -f, --file FILE     Use FILE as wtmpdb database\n", output);
+  fputs ("  -F, --fulltimes     Display full times and dates\n", output);
+  fputs ("  -n, --limit N       Display only first N entries\n", output);
+  fputs ("  -p, --present TIME  Display who was present at TIME\n", output);
+  fputs ("  -R, --nohostname    Don't display hostname\n", output);
+  fputs ("  -S, --service       Display PAM service used to login\n", output);
+  fputs ("TIME must be in the format \"YYYY-MM-DD HH:MM:SS\"\n", output);
   fputs ("\n", output);
   fputs ("Options for boot (writes boot entry to wtmpdb):\n", output);
-  fputs ("  -f, --file FILE   Use FILE as wtmpdb database\n", output);
+  fputs ("  -f, --file FILE     Use FILE as wtmpdb database\n", output);
   fputs ("\n", output);
   fputs ("Options for shutdown (writes shutdown time to wtmpdb):\n", output);
-  fputs ("  -f, --file FILE   Use FILE as wtmpdb database\n", output);
+  fputs ("  -f, --file FILE     Use FILE as wtmpdb database\n", output);
   fputs ("\n", output);
   fputs ("Generic options:\n", output);
-  fputs ("  -h, --help            Display this help message and exit\n", output);
-  fputs ("  -v, --version         Print version number and exit\n", output);
+  fputs ("  -h, --help          Display this help message and exit\n", output);
+  fputs ("  -v, --version       Print version number and exit\n", output);
   fputs ("\n", output);
   exit (retval);
 }
@@ -304,6 +330,7 @@ main_last (int argc, char **argv)
     {"file", required_argument, NULL, 'f'},
     {"fulltimes", no_argument, NULL, 'F'},
     {"limit", required_argument, NULL, 'n'},
+    {"present", required_argument, NULL, 'p'},
     {"nohostname", no_argument, NULL, 'R'},
     {"service", no_argument, NULL, 'S'},
     {NULL, 0, NULL, '\0'}
@@ -311,7 +338,7 @@ main_last (int argc, char **argv)
   char *error = NULL;
   int c;
 
-  while ((c = getopt_long (argc, argv, "af:Fn:RS", longopts, NULL)) != -1)
+  while ((c = getopt_long (argc, argv, "af:Fn:p:RS", longopts, NULL)) != -1)
     {
       switch (c)
         {
@@ -329,6 +356,13 @@ main_last (int argc, char **argv)
 	  break;
 	case 'n':
 	  maxentries = atoi (optarg);
+	  break;
+	case 'p':
+	  if (parse_time (optarg, &present) < 0)
+	    {
+	      fprintf (stderr, "Invalid time value '%s'\n", optarg);
+	      exit (EXIT_FAILURE);
+	    }
 	  break;
 	case 'R':
 	  nohostname = 1;
