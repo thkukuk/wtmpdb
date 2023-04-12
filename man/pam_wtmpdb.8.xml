@@ -21,6 +21,9 @@
         silent
       </arg>
       <arg choice="opt" rep="norepeat">
+        skip_if=&lt;services&gt;
+      </arg>
+      <arg choice="opt" rep="norepeat">
         database=&lt;file&gt;
       </arg>
     </cmdsynopsis>
@@ -65,6 +68,18 @@
         <listitem>
           <para>
             Avoid all messages except errors.
+          </para>
+        </listitem>
+      </varlistentry>
+      <varlistentry>
+        <term>
+          skip_if=&lt;services&gt;
+        </term>
+        <listitem>
+          <para>
+            The argument <option>services</option> is a comma separated list
+            of PAM services. If a service is listed here, no wtmpdb entry is
+	    written.
           </para>
         </listitem>
       </varlistentry>

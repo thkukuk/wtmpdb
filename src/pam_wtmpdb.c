@@ -38,6 +38,7 @@
 
 #define WTMPDB_DEBUG        01  /* send info to syslog(3) */
 #define WTMPDB_QUIET        02  /* keep quiet about things */
+#define WTMPDB_SKIP         04  /* Skip if service is in skip list */
 
 static const char *wtmpdb_path = _PATH_WTMPDB;
 
@@ -52,6 +53,42 @@ skip_prefix (const char *str, const char *prefix)
   size_t prefix_len = strlen (prefix);
 
   return strncmp(str, prefix, prefix_len) ? NULL : str + prefix_len;
+}
+
+/* check for list match. */
+static int
+check_in_list (const char *service, const char *arg)
+{
+  const char *item;
+  const char *remaining;
+
+  if (!service)
+    return 0;
+
+  remaining = arg;
+
+  for (;;) {
+    item = strstr (remaining, service);
+    if (item == NULL)
+      break;
+
+    /* is it really the start of an item in the list? */
+    if (item == arg || *(item - 1) == ',') {
+      item += strlen (service);
+      /* is item really the service? */
+      if (*item == '\0' || *item == ',')
+        return 1;
+    }
+
+    remaining = strchr (item, ',');
+    if (remaining == NULL)
+      break;
+
+    /* skip ',' */
+    ++remaining;
+  }
+
+  return 0;
 }
 
 static char tty_buf[12];
@@ -113,6 +150,24 @@ _pam_parse_args (pam_handle_t *pamh,
 	ctrl |= WTMPDB_QUIET;
       else if ((str = skip_prefix(*argv, "database=")) != NULL)
 	wtmpdb_path = str;
+      else if ((str = skip_prefix (*argv, "skip_if=")) != NULL)
+        {
+          const void *void_str = NULL;
+          const char *service;
+          if ((pam_get_item (pamh, PAM_SERVICE, &void_str) != PAM_SUCCESS) ||
+              void_str == NULL)
+            service = "";
+          else
+            service = void_str;
+
+          if (check_in_list (service, str))
+            {
+              if (ctrl & WTMPDB_DEBUG)
+                pam_syslog (pamh, LOG_DEBUG, "skip_if='%s' contains '%s'",
+			    str, service);
+              ctrl |= WTMPDB_SKIP;
+            }
+        }
       else
 	pam_syslog (pamh, LOG_ERR, "Unknown option: %s", *argv);
     }
@@ -169,6 +224,9 @@ pam_sm_open_session (pam_handle_t *pamh, int flags,
   int64_t id;
 
   ctrl = _pam_parse_args (pamh, flags, argc, argv);
+
+  if (ctrl & WTMPDB_SKIP)
+    return PAM_IGNORE;
 
   void_str = NULL;
   int retval = pam_get_item (pamh, PAM_USER, &void_str);
@@ -261,6 +319,9 @@ pam_sm_close_session (pam_handle_t *pamh, int flags,
   const int64_t *idptr;
   int retval;
   struct timespec ts;
+
+  if (ctrl & WTMPDB_SKIP)
+    return PAM_IGNORE;
 
   clock_gettime (CLOCK_REALTIME, &ts);
 
