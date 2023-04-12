@@ -1,0 +1,187 @@
+<refentry xmlns="http://docbook.org/ns/docbook" version="5.0" xml:id="pam_wtmpdb">
+  <refmeta>
+    <refentrytitle>pam_wtmpdb</refentrytitle>
+    <manvolnum>8</manvolnum>
+    <refmiscinfo class="source">wtmpdb %version%</refmiscinfo>
+    <refmiscinfo class="manual">pam_wtmpdb</refmiscinfo>
+  </refmeta>
+
+  <refnamediv>
+    <refname>pam_wtmpdb</refname>
+    <refpurpose>PAM module to record login and logout times of users</refpurpose>
+  </refnamediv>
+
+  <refsynopsisdiv>
+    <cmdsynopsis sepchar=" ">
+      <command>pam_wtmpdb.so</command>
+      <arg choice="opt" rep="norepeat">
+	debug
+      </arg>
+      <arg choice="opt" rep="norepeat">
+        silent
+      </arg>
+      <arg choice="opt" rep="norepeat">
+        database=&lt;file&gt;
+      </arg>
+    </cmdsynopsis>
+  </refsynopsisdiv>
+
+  <refsect1>
+
+    <title>DESCRIPTION</title>
+
+    <para>
+      pam_wtmpdb is a PAM module to record the login and logout
+      information of the user. The module uses
+      <filename>/var/lib/wtmpdb/wtmpdb.db</filename> as database
+      file to store all information.
+    </para>
+    <para>
+      Compared to some <citerefentry>
+      <refentrytitle>wtmp</refentrytitle><manvolnum>5</manvolnum>
+      </citerefentry> implementations this PAM module is Y2038 safe and
+      uses sqlite3 to store the information.
+    </para>
+  </refsect1>
+
+  <refsect1>
+
+    <title>OPTIONS</title>
+    <variablelist>
+      <varlistentry>
+        <term>
+          debug
+        </term>
+        <listitem>
+          <para>
+            Print debug information.
+          </para>
+        </listitem>
+      </varlistentry>
+      <varlistentry>
+        <term>
+          silent
+        </term>
+        <listitem>
+          <para>
+            Avoid all messages except errors.
+          </para>
+        </listitem>
+      </varlistentry>
+      <varlistentry>
+        <term>
+          database=&lt;file&gt;
+        </term>
+        <listitem>
+          <para>
+            Use <option>file</option> instead of
+            <filename>/var/lib/wtmpdb/wtmpdb.db</filename>.
+          </para>
+        </listitem>
+      </varlistentry>
+    </variablelist>
+  </refsect1>
+
+  <refsect1>
+    <title>MODULE TYPES PROVIDED</title>
+    <para>
+      The <option>session</option> module type is provided for updating the
+      wtmp database with the login and logout information about an user.
+    </para>
+  </refsect1>
+
+  <refsect1>
+    <title>RETURN VALUES</title>
+    <para>
+      <variablelist>
+
+        <varlistentry>
+          <term>PAM_SUCCESS</term>
+          <listitem>
+            <para>
+              Everything was successful.
+            </para>
+          </listitem>
+        </varlistentry>
+
+        <varlistentry>
+          <term>PAM_SERVICE_ERR</term>
+          <listitem>
+            <para>
+	      Internal service module error. This includes error reading
+              from or writing to the database.
+            </para>
+          </listitem>
+        </varlistentry>
+
+        <varlistentry>
+          <term>PAM_USER_UNKNOWN</term>
+          <listitem>
+            <para>
+	      User not known.
+            </para>
+          </listitem>
+        </varlistentry>
+
+        <varlistentry>
+          <term>PAM_IGNORE</term>
+          <listitem>
+            <para>
+              Returned by service types which do nothing.
+            </para>
+          </listitem>
+        </varlistentry>
+
+      </variablelist>
+    </para>
+  </refsect1>
+
+  <refsect1>
+    <title>EXAMPLES</title>
+    <para>
+      Add the following line to e.g. <filename>/etc/pam.d/login</filename> to
+      display the last login time of a user:
+    </para>
+    <programlisting>
+      session  required  pam_wtmpdb.so
+    </programlisting>
+  </refsect1>
+
+  <refsect1>
+    <title>FILES</title>
+    <variablelist>
+      <varlistentry>
+        <term>/var/lib/wtmpdb/wtmpdb.db</term>
+        <listitem>
+          <para>Wtmpdb logging database file</para>
+        </listitem>
+      </varlistentry>
+    </variablelist>
+  </refsect1>
+
+  <refsect1>
+    <title>SEE ALSO</title>
+    <para>
+      <citerefentry>
+	<refentrytitle>wtmpdb</refentrytitle><manvolnum>8</manvolnum>
+      </citerefentry>,
+      <citerefentry>
+	<refentrytitle>pam.conf</refentrytitle><manvolnum>5</manvolnum>
+      </citerefentry>,
+      <citerefentry>
+	<refentrytitle>pam.d</refentrytitle><manvolnum>5</manvolnum>
+      </citerefentry>,
+      <citerefentry>
+	<refentrytitle>pam</refentrytitle><manvolnum>8</manvolnum>
+      </citerefentry>
+    </para>
+  </refsect1>
+
+  <refsect1>
+    <title>AUTHOR</title>
+    <para>
+      pam_wtmpdb was written by Thorsten Kukuk &lt;kukuk@suse.com&gt;.
+    </para>
+  </refsect1>
+
+</refentry>

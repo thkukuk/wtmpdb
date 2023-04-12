@@ -1,0 +1,254 @@
+<refentry xmlns="http://docbook.org/ns/docbook" version="5.0" xml:id="wtmpdb">
+  <refmeta>
+    <refentrytitle>wtmpdb</refentrytitle>
+    <manvolnum>8</manvolnum>
+    <refmiscinfo class="source">wtmpdb %version%</refmiscinfo>
+    <refmiscinfo class="manual">wtmpdb</refmiscinfo>
+  </refmeta>
+
+  <refnamediv>
+    <refname>wtmpdb</refname>
+    <refpurpose>display login, logout and reboot information</refpurpose>
+  </refnamediv>
+
+  <refsynopsisdiv>
+    <cmdsynopsis sepchar=" ">
+      <command>wtmpdb</command>
+      <arg choice="plain">COMMAND</arg>
+      <arg choice="opt" rep="repeat">
+       option
+      </arg>
+    </cmdsynopsis>
+  </refsynopsisdiv>
+
+  <refsect1>
+
+    <title>DESCRIPTION</title>
+
+    <para>
+      <command>wtmpdb</command> displays the content of the wtmp
+      database and allows to create reboot and shutdown entries.
+    </para>
+    <para>
+      This command is Y2038 safe and uses sqlite3 to store the information.
+    </para>
+  </refsect1>
+
+  <refsect1>
+    <title>COMMANDS</title>
+    <para>The following commands are understood:</para>
+    <variablelist>
+      <varlistentry>
+        <term><command>last</command>
+	<optional><replaceable>option</replaceable>…</optional></term>
+        <listitem>
+          <para>
+	    <command>wtmpdb last</command> goes through the
+	    <filename>/var/lib/wtmpdb/wtmp.db</filename> database (or the
+	    database designated by the <command>-f</command> option) and
+	    displays a list of of all users logged in and logged out. The
+	    output can be restricted to different patterns via various
+	    options.
+	  </para>
+	  <para>
+	    The login and logout times of the special user
+	    <command>reboot</command> are the boot and shutdown times of the
+	    system.
+	  </para>
+	  <variablelist>
+	    <varlistentry>
+	      <term>
+		<option>-a, --lasthost</option>
+	      </term>
+	      <listitem>
+		<para>
+		  Display hostnames in the last column.
+		</para>
+	      </listitem>
+	    </varlistentry>
+	    <varlistentry>
+	      <term>
+		<option>-f, --file</option> <replaceable>FILE</replaceable>
+	      </term>
+	      <listitem>
+		<para>
+		  Use <replaceable>FILE</replaceable> as wtmpdb database.
+		</para>
+	      </listitem>
+	    </varlistentry>
+	    <varlistentry>
+	      <term>
+		<option>-F, --fulltimes</option>
+	      </term>
+	      <listitem>
+		<para>
+		  Display full times and dates.
+		</para>
+	      </listitem>
+	    </varlistentry>
+	    <varlistentry>
+	      <term>
+		<option>-n, --limit</option> <replaceable>N</replaceable>
+	      </term>
+	      <listitem>
+		<para>
+		  Display only the first <replaceable>N</replaceable> entries.
+		</para>
+	      </listitem>
+	    </varlistentry>
+	    <varlistentry>
+	      <term>
+		<option>-p, --present</option> <replaceable>TIME</replaceable>
+	      </term>
+	      <listitem>
+		<para>
+		  Display who was present at <replaceable>TIME</replaceable>.
+		</para>
+	      </listitem>
+	    </varlistentry>
+	    <varlistentry>
+	      <term>
+		<option>-R, --nohostname</option>
+	      </term>
+	      <listitem>
+		<para>
+		  Don't display any hostname or IP address.
+		</para>
+	      </listitem>
+	    </varlistentry>
+	    <varlistentry>
+	      <term>
+		<option>-S, --service</option>
+	      </term>
+	      <listitem>
+		<para>
+		  Display PAM service used to login.
+		</para>
+	      </listitem>
+	    </varlistentry>
+	    <varlistentry>
+	      <term>
+		<option>-s, --since</option> <replaceable>TIME</replaceable>
+	      </term>
+	      <listitem>
+		<para>
+		  Print only records more recent than
+		  <replaceable>TIME</replaceable>.
+		</para>
+	      </listitem>
+	    </varlistentry>
+	    <varlistentry>
+	      <term>
+		<option>-t, --until</option> <replaceable>TIME</replaceable>
+	      </term>
+	      <listitem>
+		<para>
+		  Print only records until <replaceable>TIME</replaceable>.
+		</para>
+	      </listitem>
+	    </varlistentry>
+	  </variablelist>
+	  <para>
+	    <replaceable>TIME</replaceable> must be in the format <option>"YYYY-MM-DD HH:MM:SS"</option>.
+	  </para>
+	</listitem>
+      </varlistentry>
+      <varlistentry>
+        <term><command>boot</command>
+	<optional><replaceable>option</replaceable>…</optional></term>
+        <listitem>
+          <para>
+	    <command>wtmpdb boot</command> writes system boot times
+	    to the <filename>/var/lib/wtmpdb/wtmp.db</filename> database.
+	  </para>
+	  <title>boot options</title>
+	  <varlistentry>
+	    <term>
+	      <option>-f, --file</option> <replaceable>FILE</replaceable>
+	    </term>
+	    <listitem>
+	      <para>
+		Use <replaceable>FILE</replaceable> as wtmpdb database.
+	      </para>
+	    </listitem>
+	  </varlistentry>
+	</listitem>
+      </varlistentry>
+      <varlistentry>
+        <term><command>shutdown</command>
+	<optional><replaceable>option</replaceable>…</optional></term>
+        <listitem>
+          <para>
+	    <command>wtmpdb shutdown</command> writes system shutdown
+	    requests to the <filename>/var/lib/wtmpdb/wtmp.db</filename>
+	    database.
+	  </para>
+	  <title>shutdown options</title>
+	  <varlistentry>
+	    <term>
+	      <option>-f, --file</option> <replaceable>FILE</replaceable>
+	    </term>
+	    <listitem>
+	      <para>
+		Use <replaceable>FILE</replaceable> as wtmpdb database.
+	      </para>
+	    </listitem>
+	  </varlistentry>
+	</listitem>
+      </varlistentry>
+      <varlistentry>
+	<term>global options</term>
+	<title>global options</title>
+	<varlistentry>
+        <term>
+          <option>-h, --help</option>
+        </term>
+        <listitem>
+          <para>
+            Display help message and exit.
+          </para>
+        </listitem>
+      </varlistentry>
+      <varlistentry>
+        <term>
+          <option>-v, --version</option>
+        </term>
+        <listitem>
+          <para>
+            Print version number and exit.
+          </para>
+        </listitem>
+      </varlistentry>
+      </varlistentry>
+    </variablelist>
+  </refsect1>
+
+  <refsect1>
+    <title>FILES</title>
+    <variablelist>
+      <varlistentry>
+        <term>/var/lib/lastlog/wtmpdb.db</term>
+        <listitem>
+          <para>Wtmpdb logging database file</para>
+        </listitem>
+      </varlistentry>
+    </variablelist>
+  </refsect1>
+
+  <refsect1>
+    <title>SEE ALSO</title>
+    <para>
+      <citerefentry>
+	<refentrytitle>pam_wtmpdb</refentrytitle><manvolnum>8</manvolnum>
+      </citerefentry>,
+    </para>
+  </refsect1>
+
+  <refsect1>
+    <title>AUTHOR</title>
+    <para>
+      wtmpdb was written by Thorsten Kukuk &lt;kukuk@suse.com&gt;.
+    </para>
+  </refsect1>
+
+</refentry>

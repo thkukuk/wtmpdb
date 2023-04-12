@@ -166,7 +166,7 @@ subdir('units')
 subdir('tests')
 
 # Manual pages
-#subdir('man')
+subdir('man')
 
 config_h = configure_file(
   output : 'config.h',
