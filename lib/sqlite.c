@@ -75,7 +75,7 @@ open_database_rw (const char *path, char **error)
 
 /* Add a new entry. Returns ID (>=0) on success, -1 on failure. */
 static int64_t
-add_entry (sqlite3 *db, int type, const char *user, 
+add_entry (sqlite3 *db, int type, const char *user,
 	   usec_t login, const char *tty, const char *rhost,
 	   const char *service, char **error)
 {
@@ -201,7 +201,7 @@ wtmpdb_login (const char *db_path, int type, const char *user,
   sqlite3 *db;
   int64_t retval;
 
-  if ((db = open_database_rw (db_path, error)) == NULL)
+  if ((db = open_database_rw (db_path?db_path:_PATH_WTMPDB, error)) == NULL)
     return -1;
 
   retval = add_entry (db, type, user, login, tty, rhost, service, error);
@@ -379,7 +379,7 @@ wtmpdb_read_all  (const char *db_path,
   sqlite3 *db;
   char *err_msg = 0;
 
-  if ((db = open_database_ro (db_path, error)) == NULL)
+  if ((db = open_database_ro (db_path?db_path:_PATH_WTMPDB, error)) == NULL)
     return -1;
 
   char *sql = "SELECT * FROM wtmp ORDER BY Login DESC";
