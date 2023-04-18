@@ -1,3 +1,7 @@
+Version 0.4.0
+* libwtmpdb: Use project version for library version
+* libwtmpdb: Always use _PATH_WTMPDB as fallback
+
 Version 0.3.0
 * pam_wtmpdb: Add skip_if option
 * Add manual pages
