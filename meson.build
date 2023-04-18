@@ -120,6 +120,7 @@ libwtmpdb = shared_library(
   link_depends : libwtmpdb_map,
   dependencies : [libsqlite3],
   install : true,
+  version : meson.project_version(),
   soversion : '0'
 )
 install_headers('include/wtmpdb.h')
