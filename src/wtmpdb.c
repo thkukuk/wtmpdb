@@ -455,6 +455,18 @@ log_audit (int type)
 }
 #endif
 
+static struct timespec
+diff_timespec(const struct timespec *time1, const struct timespec *time0)
+{
+  struct timespec diff = {.tv_sec = time1->tv_sec - time0->tv_sec,
+    .tv_nsec = time1->tv_nsec - time0->tv_nsec};
+  if (diff.tv_nsec < 0) {
+    diff.tv_nsec += 1000000000; // nsec/sec
+    diff.tv_sec--;
+  }
+  return diff;
+}
+
 static int
 main_boot (int argc, char **argv)
 {
@@ -487,10 +499,11 @@ main_boot (int argc, char **argv)
   struct utsname uts;
   uname(&uts);
 
-  struct timespec ts;
-  clock_gettime (CLOCK_REALTIME, &ts);
-  int64_t time = wtmpdb_timespec2usec (ts);
-
+  struct timespec ts_now;
+  struct timespec ts_boot;
+  clock_gettime (CLOCK_REALTIME, &ts_now);
+  clock_gettime (CLOCK_BOOTTIME, &ts_boot);
+  int64_t time = wtmpdb_timespec2usec (diff_timespec(&ts_now, &ts_boot));
 
 #if HAVE_AUDIT
   log_audit (AUDIT_SYSTEM_BOOT);
