@@ -37,26 +37,25 @@
 #define RUNLEVEL        2  /* The system's runlevel. Unused with systemd. */
 #define USER_PROCESS    3  /* Normal process.  */
 
-typedef uint64_t usec_t;
-#define USEC_INFINITY ((usec_t) UINT64_MAX)
-#define NSEC_PER_USEC ((usec_t) 1000ULL)
-#define USEC_PER_SEC  ((usec_t) 1000000ULL)
+#define USEC_INFINITY ((uint64_t) UINT64_MAX)
+#define NSEC_PER_USEC ((uint64_t) 1000ULL)
+#define USEC_PER_SEC  ((uint64_t) 1000000ULL)
 
 extern int64_t logwtmpdb (const char *db_path, const char *tty,
 		          const char *name, const char *host,
 		          const char *service, char **error);
 extern int64_t wtmpdb_login (const char *db_path, int type,
-			     const char *user, usec_t login,
+			     const char *user, uint64_t usec_login,
 			     const char *tty, const char *rhost,
 			     const char *service, char **error);
-extern int wtmpdb_logout (const char *db_path, int64_t id, usec_t logout,
-		          char **error);
+extern int wtmpdb_logout (const char *db_path, int64_t id,
+			  uint64_t usec_logout, char **error);
 extern int wtmpdb_read_all (const char *db_path,
-		            int (*cb_func) (void *unused, int argc, 
+		            int (*cb_func) (void *unused, int argc,
 				            char **argv, char **azColName),
 			    char **error);
 
 /* helper function */
 extern int64_t wtmpdb_get_id (const char *db_path, const char *tty,
 			      char **error);
-extern usec_t wtmpdb_timespec2usec (const struct timespec ts);
+extern uint64_t wtmpdb_timespec2usec (const struct timespec ts);

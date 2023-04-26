@@ -33,18 +33,18 @@
 
 #include "wtmpdb.h"
 
-usec_t
+uint64_t
 wtmpdb_timespec2usec (const struct timespec ts)
 {
   if (ts.tv_sec < 0 || ts.tv_nsec < 0)
     return USEC_INFINITY;
 
-  if ((usec_t) ts.tv_sec >
+  if ((uint64_t) ts.tv_sec >
       (UINT64_MAX - (ts.tv_nsec / NSEC_PER_USEC)) / USEC_PER_SEC)
     return UINT64_MAX;
 
-  return (usec_t) ts.tv_sec * USEC_PER_SEC +
-    (usec_t) ts.tv_nsec / NSEC_PER_USEC;
+  return (uint64_t) ts.tv_sec * USEC_PER_SEC +
+    (uint64_t) ts.tv_nsec / NSEC_PER_USEC;
 }
 
 

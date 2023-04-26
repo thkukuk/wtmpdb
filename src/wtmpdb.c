@@ -49,7 +49,7 @@ static char *wtmpdb_path = _PATH_WTMPDB;
 #define TIMEFMT_SHORT 2
 #define TIMEFMT_HHMM  3
 
-static usec_t wtmp_start = UINT64_MAX;
+static uint64_t wtmp_start = UINT64_MAX;
 static int after_reboot = 0;
 
 /* options for last */
@@ -141,7 +141,7 @@ print_entry (void *unused __attribute__((__unused__)),
   const char *host = argv[6]?argv[6]:"";
   const char *service = argv[7]?argv[7]:"";
 
-  usec_t login_t = strtoul(argv[3], &endptr, 10);
+  uint64_t login_t = strtoul(argv[3], &endptr, 10);
   if ((errno == ERANGE && login_t == UINT64_MAX)
       || (endptr == argv[1]) || (*endptr != '\0'))
     fprintf (stderr, "Invalid numeric time entry for 'login': '%s'\n",

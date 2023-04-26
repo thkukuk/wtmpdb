@@ -76,7 +76,7 @@ open_database_rw (const char *path, char **error)
 /* Add a new entry. Returns ID (>=0) on success, -1 on failure. */
 static int64_t
 add_entry (sqlite3 *db, int type, const char *user,
-	   usec_t login, const char *tty, const char *rhost,
+	   uint64_t usec_login, const char *tty, const char *rhost,
 	   const char *service, char **error)
 {
   char *err_msg = NULL;
@@ -126,7 +126,7 @@ add_entry (sqlite3 *db, int type, const char *user,
       return -1;
     }
 
-  if (sqlite3_bind_int64 (res, 3, login) != SQLITE_OK)
+  if (sqlite3_bind_int64 (res, 3, usec_login) != SQLITE_OK)
     {
       if (error)
         if (asprintf (error, "Failed to create replace statement for login time: %s",
@@ -190,12 +190,12 @@ add_entry (sqlite3 *db, int type, const char *user,
 
 /*
   Add new wtmp entry to db.
-  login is usec.
+  login timestamp is in usec.
   Returns 0 on success, -1 on failure.
  */
 int64_t
 wtmpdb_login (const char *db_path, int type, const char *user,
-	      usec_t login, const char *tty, const char *rhost,
+	      uint64_t usec_login, const char *tty, const char *rhost,
 	      const char *service, char **error)
 {
   sqlite3 *db;
@@ -204,17 +204,18 @@ wtmpdb_login (const char *db_path, int type, const char *user,
   if ((db = open_database_rw (db_path?db_path:_PATH_WTMPDB, error)) == NULL)
     return -1;
 
-  retval = add_entry (db, type, user, login, tty, rhost, service, error);
+  retval = add_entry (db, type, user, usec_login, tty, rhost, service, error);
 
   sqlite3_close (db);
 
   return retval;
 }
 
-/* Updates logout field
+/* Updates logout field.
+   logout timestamp is in usec.
    Returns 0 on success, -1 on failure. */
 static int
-update_logout (sqlite3 *db, int64_t id, usec_t logout, char **error)
+update_logout (sqlite3 *db, int64_t id, uint64_t usec_logout, char **error)
 {
   sqlite3_stmt *res;
   char *sql = "UPDATE wtmp SET Logout = ? WHERE ID = ?";
@@ -229,7 +230,7 @@ update_logout (sqlite3 *db, int64_t id, usec_t logout, char **error)
       return -1;
     }
 
-  if (sqlite3_bind_int64 (res, 1, logout) != SQLITE_OK)
+  if (sqlite3_bind_int64 (res, 1, usec_logout) != SQLITE_OK)
     {
       if (error)
         if (asprintf (error, "Failed to create update query (logout): %s",
@@ -284,12 +285,13 @@ update_logout (sqlite3 *db, int64_t id, usec_t logout, char **error)
 
 /*
   Add logout timestamp to existingentry.
-  logout is usec.
+  logout timestamp is in usec.
   ID is the return value of wtmpdb_login/logwtmpdb.
   Returns 0 on success, -1 on failure.
  */
 int
-wtmpdb_logout (const char *db_path, int64_t id, usec_t logout, char **error)
+wtmpdb_logout (const char *db_path, int64_t id, uint64_t usec_logout,
+	       char **error)
 {
   sqlite3 *db;
   int retval;
@@ -297,7 +299,7 @@ wtmpdb_logout (const char *db_path, int64_t id, usec_t logout, char **error)
   if ((db = open_database_rw (db_path?db_path:_PATH_WTMPDB, error)) == NULL)
     return -1;
 
-  retval = update_logout (db, id, logout, error);
+  retval = update_logout (db, id, usec_logout, error);
 
   sqlite3_close (db);
 
