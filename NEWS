@@ -1,6 +1,6 @@
 Version 0.5.0
 * Use uint64_t instead of usec_t to avoid conflicts with other projects
-* wtmpdb boot: ore accurate calculation of boot time
+* wtmpdb boot: more accurate calculation of boot time
 
 Version 0.4.0
 * libwtmpdb: Use project version for library version
