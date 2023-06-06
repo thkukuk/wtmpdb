@@ -197,6 +197,40 @@
 	</listitem>
       </varlistentry>
       <varlistentry>
+        <term><command>rotate</command>
+	<optional><replaceable>option</replaceable>…</optional></term>
+        <listitem>
+          <para>
+	    <command>wtmpdb rotate</command> exports old log entries
+	    to the <filename>/var/lib/wtmpdb/wtmp_yyyymmmdd.db</filename>
+	    database and removes these entries from the original one.
+	  </para>
+	  <title>rotate options</title>
+	  <varlistentry>
+	    <term>
+	      <option>-f, --file</option> <replaceable>FILE</replaceable>
+	    </term>
+	    <listitem>
+	      <para>
+		Use <replaceable>FILE</replaceable> as wtmpdb database.
+                The exported DB file will be on the same location.
+	      </para>
+	    </listitem>
+	  </varlistentry>
+	  <varlistentry>
+	    <term>
+	      <option>-d, --days</option> <replaceable>DAYS</replaceable>
+	    </term>
+	    <listitem>
+	      <para>
+		Entries will be exported which are older than
+                <replaceable>DAYS</replaceable> days. Default is 60 days.
+	      </para>
+	    </listitem>
+	  </varlistentry>
+	</listitem>
+      </varlistentry>
+      <varlistentry>
 	<term>global options</term>
 	<title>global options</title>
 	<varlistentry>

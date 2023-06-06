@@ -54,6 +54,9 @@ extern int wtmpdb_read_all (const char *db_path,
 		            int (*cb_func) (void *unused, int argc,
 				            char **argv, char **azColName),
 			    char **error);
+extern int wtmpdb_logrotate  (const char *db_path,
+                            const int days,
+			    char **error);
 
 /* helper function */
 extern int64_t wtmpdb_get_id (const char *db_path, const char *tty,

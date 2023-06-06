@@ -49,6 +49,8 @@ static char *wtmpdb_path = _PATH_WTMPDB;
 #define TIMEFMT_SHORT 2
 #define TIMEFMT_HHMM  3
 
+#define LOGROTATE_DAYS 60
+
 static uint64_t wtmp_start = UINT64_MAX;
 static int after_reboot = 0;
 
@@ -325,11 +327,71 @@ usage (int retval)
   fputs ("Options for shutdown (writes shutdown time to wtmpdb):\n", output);
   fputs ("  -f, --file FILE     Use FILE as wtmpdb database\n", output);
   fputs ("\n", output);
+  fputs ("Options for rotate (exports old entries to wtmpdb_<datetime>)):\n", output);
+  fputs ("  -f, --file FILE     Use FILE as wtmpdb database\n", output);
+  fputs ("  -d, --days INTEGER  Export all entries which are older than the given days\n", output);
+  fputs ("\n", output);
   fputs ("Generic options:\n", output);
   fputs ("  -h, --help          Display this help message and exit\n", output);
   fputs ("  -v, --version       Print version number and exit\n", output);
   fputs ("\n", output);
   exit (retval);
+}
+
+static int
+main_logrotate (int argc, char **argv)
+{
+  struct option const longopts[] = {
+    {"file", required_argument, NULL, 'f'},
+    {"days", no_argument, NULL, 'd'},
+    {NULL, 0, NULL, '\0'}
+  };
+  char *error = NULL;
+  int days = LOGROTATE_DAYS;
+
+  int c;
+
+  while ((c = getopt_long (argc, argv, "f:d:", longopts, NULL)) != -1)
+    {
+      switch (c)
+        {
+        case 'f':
+          wtmpdb_path = optarg;
+          break;
+	case 'd':
+	  days = atoi (optarg);
+	  break;
+        default:
+          usage (EXIT_FAILURE);
+          break;
+        }
+    }
+
+  if (argc > optind)
+    {
+      fprintf (stderr, "Unexpected argument: %s\n", argv[optind]);
+      usage (EXIT_FAILURE);
+    }
+
+  if (wtmpdb_logrotate (wtmpdb_path, days, &error) != 0)
+    {
+      if (error)
+        {
+          fprintf (stderr, "%s\n", error);
+          free (error);
+        }
+      else
+        fprintf (stderr, "Couldn't read all wtmp entries\n");
+
+      exit (EXIT_FAILURE);
+    }
+
+  char wtmptime[32];
+  format_time (TIMEFMT_CTIME, wtmptime, sizeof (wtmptime),
+	       wtmp_start/USEC_PER_SEC);
+  printf ("\n%s begins %s\n", wtmpdb_path, wtmptime);
+
+  return EXIT_SUCCESS;
 }
 
 static int
@@ -344,7 +406,7 @@ main_last (int argc, char **argv)
     {"nohostname", no_argument, NULL, 'R'},
     {"since", required_argument, NULL, 's'},
     {"service", no_argument, NULL, 'S'},
-    {"until", required_argument, NULL, 't'},
+    {"until", required_argument, NULL, 'u'},
     {NULL, 0, NULL, '\0'}
   };
   char *error = NULL;
@@ -481,7 +543,7 @@ main_boot (int argc, char **argv)
     {
       switch (c)
         {
-        case 'd':
+        case 'f':
           wtmpdb_path = optarg;
           break;
         default:
@@ -540,7 +602,7 @@ main_shutdown (int argc, char **argv)
     {
       switch (c)
         {
-        case 'd':
+        case 'f':
           wtmpdb_path = optarg;
           break;
         default:
@@ -613,6 +675,8 @@ main (int argc, char **argv)
     return main_boot (--argc, ++argv);
   else if (strcmp (argv[1], "shutdown") == 0)
     return main_shutdown (--argc, ++argv);
+  else if (strcmp (argv[1], "rotate") == 0)
+    return main_logrotate (--argc, ++argv);
 
   while ((c = getopt_long (argc, argv, "hv", longopts, NULL)) != -1)
     {
