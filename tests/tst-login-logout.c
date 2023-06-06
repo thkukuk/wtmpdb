@@ -48,6 +48,7 @@ test_args (const char *db_path, const char *user, const char *tty,
   int64_t logout_t = -1;
 
   clock_gettime (CLOCK_REALTIME, &ts);
+  ts.tv_sec -= 259200; /* three days behind */
   login_t = wtmpdb_timespec2usec (ts);
 
   if ((id = wtmpdb_login (db_path, USER_PROCESS, user,
@@ -81,12 +82,81 @@ test_args (const char *db_path, const char *user, const char *tty,
   return 0;
 }
 
+static int counter = 0;
+
+static int
+count_entry (void *unused __attribute__((__unused__)),
+	     int argc, char **argv, char **azColName)
+{
+  (void)argc;
+  (void)argv;
+  (void)azColName;
+  counter++;
+  return 0;
+}
+
+static int
+test_logrotate (const char *db_path)
+{
+  char *error = NULL;
+
+  counter = 0;
+  if (wtmpdb_read_all (db_path, count_entry, &error) != 0)
+    {
+      if (error)
+        {
+          fprintf (stderr, "%s\n", error);
+          free (error);
+        }
+      else
+	fprintf (stderr, "wtmpdb_read_all failed\n");
+      return 1;
+    }
+  if (counter != 5)
+    {
+      fprintf (stderr, "wtmpdb_read_all returned %d expected 5\n", counter);
+      return 1;
+    }
+
+  if (wtmpdb_logrotate (db_path, 1, &error) != 0)
+    {
+      if (error)
+        {
+          fprintf (stderr, "%s\n", error);
+          free (error);
+        }
+      else
+	fprintf (stderr, "wtmpdb_logrotate failed\n");
+      return 1;
+    }
+
+  counter = 0;
+  if (wtmpdb_read_all (db_path, count_entry, &error) != 0)
+    {
+      if (error)
+        {
+          fprintf (stderr, "%s\n", error);
+          free (error);
+        }
+      else
+	fprintf (stderr, "wtmpdb_read_all failed\n");
+      return 1;
+    }
+  if (counter != 0)
+    {
+      fprintf (stderr, "wtmpdb_read_all returned %d expected 0\n", counter);
+      return 1;
+    }
+
+  return 0;
+}
+
 int
 main(void)
 {
   const char *db_path = "tst-login-logout.db";
 
-  /* make sure there is no old stuff flying around */
+  /* make sure there is no old stuff flying around. The backup file is not so important. */
   remove (db_path);
 
   if (test_args (db_path, "user1", "test-tty", "localhost", NULL) != 0)
@@ -99,6 +169,25 @@ main(void)
     return 1;
   if (test_args (db_path, "user5", NULL, "localhost", NULL) != 0)
     return 1;
+
+  if (test_logrotate (db_path) != 0)
+    return 1;
+
+  /* cleanup */
+  time_t rawtime = time(0); /* System time: number of seconds since 00:00, Jan 1 1970 UTC */
+  time(&rawtime);
+  struct tm *tm = localtime (&rawtime);
+  char date[10];
+  strftime (date, 10, "%Y%m%d", tm);
+  char *backup_path = NULL;
+  if (asprintf (&backup_path, "tst-login-logout_%s.db", date) < 0)
+    {
+      fprintf (stderr, "Out of memory");
+      return 1;
+    }
+  remove (backup_path);
+  free (backup_path);
+  remove (db_path);
 
   return 0;
 }

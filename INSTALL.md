@@ -1,0 +1,17 @@
+# Building and installing wtmpdb
+
+## Building with Meson
+
+wtmpdb requires a relatively recent version of Meson.
+
+Building with Meson is quite simple:
+
+```shell
+$ meson setup build
+$ meson compile -C build
+$ meson compile -C build test
+$ sudo meson  install -C build
+```
+
+If you want to build with the address sanitizer enabled, add
+`-Db_sanitize=address` as an argument to `meson build`.
