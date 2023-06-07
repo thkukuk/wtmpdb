@@ -308,7 +308,7 @@ usage (int retval)
   FILE *output = (retval != EXIT_SUCCESS) ? stderr : stdout;
 
   fprintf (output, "Usage: wtmpdb [command] [options]\n");
-  fputs ("Commands: last, boot, shutdown\n\n", output);
+  fputs ("Commands: last, boot, rotate, shutdown\n\n", output);
   fputs ("Options for last:\n", output);
   fputs ("  -a, --lasthost      Display hostnames as last entry\n", output);
   fputs ("  -f, --file FILE     Use FILE as wtmpdb database\n", output);
@@ -321,16 +321,20 @@ usage (int retval)
   fputs ("  -t, --until TIME    Display who was logged in until TIME\n", output);
   fputs ("TIME must be in the format \"YYYY-MM-DD HH:MM:SS\"\n", output);
   fputs ("\n", output);
+
   fputs ("Options for boot (writes boot entry to wtmpdb):\n", output);
   fputs ("  -f, --file FILE     Use FILE as wtmpdb database\n", output);
   fputs ("\n", output);
-  fputs ("Options for shutdown (writes shutdown time to wtmpdb):\n", output);
-  fputs ("  -f, --file FILE     Use FILE as wtmpdb database\n", output);
-  fputs ("\n", output);
+
   fputs ("Options for rotate (exports old entries to wtmpdb_<datetime>)):\n", output);
   fputs ("  -f, --file FILE     Use FILE as wtmpdb database\n", output);
   fputs ("  -d, --days INTEGER  Export all entries which are older than the given days\n", output);
   fputs ("\n", output);
+
+  fputs ("Options for shutdown (writes shutdown time to wtmpdb):\n", output);
+  fputs ("  -f, --file FILE     Use FILE as wtmpdb database\n", output);
+  fputs ("\n", output);
+
   fputs ("Generic options:\n", output);
   fputs ("  -h, --help          Display this help message and exit\n", output);
   fputs ("  -v, --version       Print version number and exit\n", output);
