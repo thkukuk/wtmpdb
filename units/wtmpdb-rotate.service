@@ -1,0 +1,11 @@
+[Unit]
+Description=Rotate wtmpdb
+Documentation=man:wtmpdb(8)
+RequiresMountsFor=/var/lib/wtmpdb
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/wtmpdb rotate
+Nice=19
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
