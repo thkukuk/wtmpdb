@@ -538,7 +538,8 @@ wtmpdb_logrotate  (const char *db_path,
     }
 
   char *sql = NULL;
-  if (asprintf (&sql, "SELECT * FROM wtmp where Login <= %ld", login_t) < 0)
+  if (asprintf (&sql, "SELECT * FROM wtmp where Login <= %lld",
+		(long long unsigned)login_t) < 0) /* conversation for i586/x86_64 build needed */
     {
       *error = strdup ("Out of memory");
       sqlite3_close (db_src);
@@ -564,7 +565,8 @@ wtmpdb_logrotate  (const char *db_path,
     }
 
   free(sql);
-  if (asprintf (&sql, "DELETE FROM wtmp where Login <= %ld", login_t) < 0)
+  if (asprintf (&sql, "DELETE FROM wtmp where Login <= %lld",
+		(long long unsigned)login_t) < 0) /* conversation for i586/x86_64 build needed */
     {
       *error = strdup ("Out of memory");
       sqlite3_close (db_src);
