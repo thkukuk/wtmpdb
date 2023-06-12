@@ -10,7 +10,7 @@ Building with Meson is quite simple:
 $ meson setup build
 $ meson compile -C build
 $ meson compile -C build test
-$ sudo meson  install -C build
+$ sudo meson install -C build
 ```
 
 If you want to build with the address sanitizer enabled, add
