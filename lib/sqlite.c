@@ -441,23 +441,20 @@ wtmpdb_read_all  (const char *db_path,
   return 0;
 }
 
-static int logrotate_callback(void *data, int argc, char **argv, char **azColName) {
-  (void)argc;
-  (void)azColName;
-  sqlite3 *db_dest = (sqlite3*)data;
-  char *error = NULL;
+static int
+export_row( sqlite3 *db_dest, sqlite3_stmt *sqlStatement, char **error ) {
   char *endptr;
 
-  const int type = atoi (argv[1]);
-  const char *user = argv[2];
-  const char *tty = argv[5];
-  const char *host = argv[6];
-  const char *service = argv[7];
-  uint64_t login_t = strtoul(argv[3], &endptr, 10);
+  const int type = sqlite3_column_int( sqlStatement, 1 );
+  const char *user = (const char*)sqlite3_column_text( sqlStatement, 2 );
+  const char *tty = (const char*)sqlite3_column_text( sqlStatement, 5 );
+  const char *host = (const char*)sqlite3_column_text( sqlStatement, 6 );
+  const char *service = (const char*)sqlite3_column_text( sqlStatement, 7 );
+  uint64_t login_t = strtoul((const char*)sqlite3_column_text( sqlStatement, 3 ), &endptr, 10);
   if ((errno == ERANGE && login_t == UINT64_MAX)
-      || (endptr == argv[1]) || (*endptr != '\0'))
+      || (endptr == (const char *)sqlite3_column_text( sqlStatement, 3 )) || (*endptr != '\0'))
     fprintf (stderr, "Invalid numeric time entry for 'login': '%s'\n",
-	     argv[3]);
+	     sqlite3_column_text( sqlStatement, 5 ));
 
   int id = add_entry (db_dest,
 		      type,
@@ -466,28 +463,29 @@ static int logrotate_callback(void *data, int argc, char **argv, char **azColNam
 		      tty,
 		      host,
 		      service,
-		      &error);
+		      error);
   if (id >=0)
     {
-      if ( argv[4] )
+      const char *logout = (const char*)sqlite3_column_text( sqlStatement, 4 );
+      if (logout)
 	{
-          int64_t logout_t = strtoul(argv[4], &endptr, 10);
+          int64_t logout_t = strtoul(logout, &endptr, 10);
 	  if ((errno == ERANGE && logout_t == INT64_MAX)
-	      || (endptr == argv[1]) || (*endptr != '\0'))
+	      || (endptr == logout) || (*endptr != '\0'))
 	  {
-	    fprintf (stderr, "Invalid numeric time entry for 'logout': '%s'\n", argv[4]);
+	    fprintf (stderr, "Invalid numeric time entry for 'logout': '%s'\n", sqlite3_column_text( sqlStatement, 3 ));
 	    return -1;
 	  }
-          if (update_logout (db_dest, id, logout_t, &error) == -1)
+          if (update_logout (db_dest, id, logout_t, error) == -1)
 	  {
-            fprintf (stderr, "Cannot update DB value: '%s'\n", error);
+            fprintf (stderr, "Cannot update DB value: '%s'\n", *error);
 	    return -1;
 	  }
 	}
     }
   else
     {
-       fprintf (stderr, "Cannot insert DB value: '%s'\n", error);
+       fprintf (stderr, "Cannot insert DB value: '%s'\n", *error);
        return -1;
     }
 
@@ -504,7 +502,6 @@ wtmpdb_logrotate  (const char *db_path,
 {
   sqlite3 *db_src;
   sqlite3 *db_dest;
-  char *err_msg = 0;
   struct timespec ts_now;
   clock_gettime (CLOCK_REALTIME, &ts_now);
   time_t rawtime = time(0); // System time: number of seconds since 00:00, Jan 1 1970 UTC
@@ -537,38 +534,14 @@ wtmpdb_logrotate  (const char *db_path,
       return -1;
     }
 
-  char *sql = NULL;
-  if (asprintf (&sql, "SELECT * FROM wtmp where Login <= %lld",
-		(long long unsigned)login_t) < 0) /* conversation for i586/x86_64 build needed */
-    {
-      *error = strdup ("Out of memory");
-      sqlite3_close (db_src);
-      sqlite3_close (db_dest);
-      free(dest_path);
-      free(dest_file);
-      return -1;
-    }
-
-  if (sqlite3_exec (db_src, sql, logrotate_callback, (void*)db_dest, &err_msg) != SQLITE_OK)
+  char *sql_select = "SELECT * FROM wtmp where Login <= ?";
+  sqlite3_stmt *res;
+  if (sqlite3_prepare_v2 (db_src, sql_select, -1, &res, 0) != SQLITE_OK)
     {
       if (error)
-        if (asprintf (error, "SQL error: %s", err_msg) < 0)
+        if (asprintf (error, "Failed to execute statement: %s",
+                      sqlite3_errmsg (db_src)) < 0)
           *error = strdup ("Out of memory");
-
-      sqlite3_free (err_msg);
-      sqlite3_close (db_src);
-      sqlite3_close (db_dest);
-      free(sql);
-      free(dest_path);
-      free(dest_file);
-      return -1;
-    }
-
-  free(sql);
-  if (asprintf (&sql, "DELETE FROM wtmp where Login <= %lld",
-		(long long unsigned)login_t) < 0) /* conversation for i586/x86_64 build needed */
-    {
-      *error = strdup ("Out of memory");
       sqlite3_close (db_src);
       sqlite3_close (db_dest);
       free(dest_path);
@@ -576,22 +549,86 @@ wtmpdb_logrotate  (const char *db_path,
       return -1;
     }
 
-  if (sqlite3_exec (db_src, sql, NULL, NULL, &err_msg) != SQLITE_OK)
+  if (sqlite3_bind_int64 (res, 1, login_t) != SQLITE_OK)
     {
       if (error)
-        if (asprintf (error, "SQL error: %s", err_msg) < 0)
-          *error = strdup ("Out of memory");
+        if (asprintf (error, "Failed to create replace statement for login time: %s",
+                      sqlite3_errmsg (db_src)) < 0)
+          *error = strdup("Out of memory");
 
-      sqlite3_free (err_msg);
+      sqlite3_finalize(res);
       sqlite3_close (db_src);
       sqlite3_close (db_dest);
-      free(sql);
       free(dest_path);
       free(dest_file);
       return -1;
     }
 
-  free(sql);
+  int rc;
+  while ((rc = sqlite3_step(res)) == SQLITE_ROW) {
+    export_row( db_dest, res, error );
+  }
+  if (rc != SQLITE_DONE) {
+    if (asprintf (error, "SQL error: %s", sqlite3_errmsg(db_src)) < 0)
+      *error = strdup ("Out of memory");
+
+    sqlite3_finalize(res);
+    sqlite3_close (db_src);
+    sqlite3_close (db_dest);
+    free(dest_path);
+    free(dest_file);
+    return -1;
+  }
+
+  sqlite3_finalize(res);
+
+  char *sql_delete = "DELETE FROM wtmp where Login <= ?";
+  if (sqlite3_prepare_v2 (db_src, sql_delete, -1, &res, 0) != SQLITE_OK)
+    {
+      if (error)
+        if (asprintf (error, "Failed to execute statement: %s",
+                      sqlite3_errmsg (db_src)) < 0)
+          *error = strdup ("Out of memory");
+      sqlite3_close (db_src);
+      sqlite3_close (db_dest);
+      free(dest_path);
+      free(dest_file);
+      return -1;
+    }
+
+  if (sqlite3_bind_int64 (res, 1, login_t) != SQLITE_OK)
+    {
+      if (error)
+        if (asprintf (error, "Failed to create replace statement for login time: %s",
+                      sqlite3_errmsg (db_src)) < 0)
+          *error = strdup("Out of memory");
+
+      sqlite3_finalize(res);
+      sqlite3_close (db_src);
+      sqlite3_close (db_dest);
+      free(dest_path);
+      free(dest_file);
+      return -1;
+    }
+
+  int step = sqlite3_step (res);
+
+  if (step != SQLITE_DONE)
+    {
+      if (error)
+        if (asprintf (error, "Adding an entry did not return SQLITE_DONE: %d",
+                      step) < 0)
+          *error = strdup("Out of memory");
+
+      sqlite3_finalize(res);
+      sqlite3_close (db_src);
+      sqlite3_close (db_dest);
+      free(dest_path);
+      free(dest_file);
+      return -1;
+    }
+
+  sqlite3_finalize(res);
   sqlite3_close (db_src);
   sqlite3_close (db_dest);
   free(dest_path);
