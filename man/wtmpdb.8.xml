@@ -58,11 +58,21 @@
 	  <variablelist>
 	    <varlistentry>
 	      <term>
-		<option>-a, --lasthost</option>
+		<option>-a, --hostlast</option>
 	      </term>
 	      <listitem>
 		<para>
 		  Display hostnames in the last column.
+		</para>
+	      </listitem>
+	    </varlistentry>
+	    <varlistentry>
+	      <term>
+		<option>-d, --dns</option>
+	      </term>
+	      <listitem>
+		<para>
+		  Translate IP addresses into a hostname.
 		</para>
 	      </listitem>
 	    </varlistentry>
@@ -83,6 +93,16 @@
 	      <listitem>
 		<para>
 		  Display full times and dates.
+		</para>
+	      </listitem>
+	    </varlistentry>
+	    <varlistentry>
+	      <term>
+		<option>-i, --ip</option>
+	      </term>
+	      <listitem>
+		<para>
+		  Translate hostnames to IP addresses.
 		</para>
 	      </listitem>
 	    </varlistentry>
@@ -144,6 +164,26 @@
 	      <listitem>
 		<para>
 		  Print only records until <replaceable>TIME</replaceable>.
+		</para>
+	      </listitem>
+	    </varlistentry>
+	    <varlistentry>
+	      <term>
+		<option>-w, --fullnames</option>
+	      </term>
+	      <listitem>
+		<para>
+		  Display full IP addresses and user and domain names.
+		</para>
+	      </listitem>
+	    </varlistentry>
+	    <varlistentry>
+	      <term>
+		<option>-x, --system</option>
+	      </term>
+	      <listitem>
+		<para>
+		  Display system shutdown entries.
 		</para>
 	      </listitem>
 	    </varlistentry>
