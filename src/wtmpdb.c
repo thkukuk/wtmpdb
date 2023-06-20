@@ -61,6 +61,7 @@ static int hostlast = 0;
 static int nohostname = 0;
 static int noservice = 1;
 static int dflag = 0;
+static int iflag = 0;
 static int wflag = 0;
 static int xflag = 0;
 static const int name_len = 8; /* LAST_LOGIN_LEN */
@@ -356,7 +357,7 @@ print_entry (void *unused __attribute__((__unused__)),
 	}
     }
 
-  if (dflag)
+  if (dflag && strlen (host) > 0)
     {
       struct sockaddr_storage addr;
       int addr_type = 0;
@@ -366,6 +367,37 @@ print_entry (void *unused __attribute__((__unused__)),
 	  if (getnameinfo ((struct sockaddr*)&addr, sizeof (addr), host_buf, sizeof (host_buf),
 			   NULL, 0, NI_NAMEREQD) == 0)
 	    host = host_buf;
+	}
+    }
+
+  if (iflag && strlen (host) > 0)
+    {
+      struct addrinfo  hints;
+      struct addrinfo  *result;
+
+      memset(&hints, 0, sizeof(hints));
+      hints.ai_family = AF_UNSPEC;    /* Allow IPv4 or IPv6 */
+      hints.ai_socktype = SOCK_DGRAM; /* Datagram socket */
+      hints.ai_flags = 0;
+      hints.ai_protocol = 0;          /* Any protocol */
+      if (getaddrinfo(host, NULL, &hints, &result) == 0)
+	{
+	  if (result->ai_family == AF_INET)
+	    {
+	      if (inet_ntop(result->ai_family,
+			    &((struct sockaddr_in *)result->ai_addr)->sin_addr,
+			    host_buf, sizeof (host_buf)) != NULL)
+		host = host_buf;
+	    }
+	  else if (result->ai_family == AF_INET6)
+	    {
+	      if (inet_ntop(result->ai_family,
+			    &((struct sockaddr_in6 *)result->ai_addr)->sin6_addr,
+			    host_buf, sizeof (host_buf)) != NULL)
+		host = host_buf;
+	    }
+
+	  freeaddrinfo(result);
 	}
     }
 
@@ -400,10 +432,11 @@ usage (int retval)
   fprintf (output, "Usage: wtmpdb [command] [options]\n");
   fputs ("Commands: last, boot, rotate, shutdown\n\n", output);
   fputs ("Options for last:\n", output);
-  fputs ("  -a, --lasthost      Display hostnames as last entry\n", output);
+  fputs ("  -a, --hostlast      Display hostnames as last entry\n", output);
   fputs ("  -d, --dns           Translate IP addresses into a hostname\n", output);
   fputs ("  -f, --file FILE     Use FILE as wtmpdb database\n", output);
   fputs ("  -F, --fulltimes     Display full times and dates\n", output);
+  fputs ("  -i, --ip            Translate hostnames to IP addresses\n", output);
   fputs ("  -n, --limit N       Display only first N entries\n", output);
   fputs ("  -p, --present TIME  Display who was present at TIME\n", output);
   fputs ("  -R, --nohostname    Don't display hostname\n", output);
@@ -500,6 +533,7 @@ main_last (int argc, char **argv)
     {"file", required_argument, NULL, 'f'},
     {"fullnames", no_argument, NULL, 'w'},
     {"fulltimes", no_argument, NULL, 'F'},
+    {"ip", no_argument, NULL, 'i'},
     {"limit", required_argument, NULL, 'n'},
     {"present", required_argument, NULL, 'p'},
     {"nohostname", no_argument, NULL, 'R'},
@@ -512,7 +546,7 @@ main_last (int argc, char **argv)
   char *error = NULL;
   int c;
 
-  while ((c = getopt_long (argc, argv, "adf:Fn:p:RSs:t:wx", longopts, NULL)) != -1)
+  while ((c = getopt_long (argc, argv, "adf:Fin:p:RSs:t:wx", longopts, NULL)) != -1)
     {
       switch (c)
         {
@@ -530,6 +564,9 @@ main_last (int argc, char **argv)
 	  login_len = 24;
 	  logout_fmt = TIMEFMT_CTIME;
 	  logout_len = 24;
+	  break;
+	case 'i':
+	  iflag = 1;
 	  break;
 	case 'n':
 	  maxentries = atoi (optarg);
@@ -588,6 +625,18 @@ main_last (int argc, char **argv)
   if (nohostname && dflag)
     {
       fprintf (stderr, "The options -d and -R cannot be used together.\n");
+      usage (EXIT_FAILURE);
+    }
+
+  if (nohostname && iflag)
+    {
+      fprintf (stderr, "The options -i and -R cannot be used together.\n");
+      usage (EXIT_FAILURE);
+    }
+
+  if (dflag && iflag)
+    {
+      fprintf (stderr, "The options -d and -i cannot be used together.\n");
       usage (EXIT_FAILURE);
     }
 
