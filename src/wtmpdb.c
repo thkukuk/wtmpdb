@@ -168,7 +168,7 @@ print_entry (void *unused __attribute__((__unused__)),
     {
       int64_t logout_t = strtoul(argv[4], &endptr, 10);
       if ((errno == ERANGE && logout_t == INT64_MAX)
-	  || (endptr == argv[3]) || (*endptr != '\0'))
+	  || (endptr == argv[4]) || (*endptr != '\0'))
 	fprintf (stderr, "Invalid numeric time entry for 'logout': '%s'\n",
 		 argv[4]);
 
