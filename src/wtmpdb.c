@@ -58,6 +58,7 @@ static int after_reboot = 0;
 static int hostlast = 0;
 static int nohostname = 0;
 static int noservice = 1;
+static int xflag = 0;
 static const int name_len = 8; /* LAST_LOGIN_LEN */
 static int login_fmt = TIMEFMT_SHORT;
 static int login_len = 16; /* 16 = short, 24 = full */
@@ -111,6 +112,75 @@ format_time (int fmt, char *dst, size_t dstlen, time_t t)
     }
 }
 
+static void
+calc_time_length(char *dst, size_t dstlen, int64_t start, int64_t stop)
+{
+  int64_t secs = (stop - start)/USEC_PER_SEC;
+  int mins  = (secs / 60) % 60;
+  int hours = (secs / 3600) % 24;
+  int days  = secs / 86400;
+
+  if (days)
+    snprintf (dst, dstlen, "(%d+%02d:%02d)", days, hours, mins);
+  else if (hours)
+    snprintf (dst, dstlen, " (%02d:%02d)", hours, mins);
+  else
+    snprintf (dst, dstlen, " (00:%02d)", mins);
+}
+
+static void
+print_line (const char *user, const char *tty, const char *host,
+	    const char *print_service,
+	    const char *logintime, const char *logouttime,
+	    const char *length)
+{
+  char *line;
+
+  if (nohostname)
+    {
+      if (asprintf (&line, "%-8.*s %-12.12s%s %-*.*s - %-*.*s %s\n",
+		    name_len, user, tty, print_service,
+		    login_len, login_len, logintime,
+		    logout_len, logout_len, logouttime,
+		    length) < 0)
+	{
+	  fprintf (stderr, "Out f memory");
+	  exit (EXIT_FAILURE);
+	}
+    }
+  else
+    {
+      if (hostlast)
+	{
+	  if (asprintf (&line, "%-8.*s %-12.12s%s %-*.*s - %-*.*s %-12.12s %s\n",
+			name_len, user, tty, print_service,
+			login_len, login_len, logintime,
+			logout_len, logout_len, logouttime,
+			length, host) < 0)
+	    {
+	      fprintf (stderr, "Out f memory");
+	      exit (EXIT_FAILURE);
+	    }
+	}
+      else
+	{
+	  if (asprintf (&line, "%-8.*s %-12.12s %-16.*s%s %-*.*s - %-*.*s %s\n",
+			name_len, user, tty,
+			host_len, host, print_service,
+			login_len, login_len, logintime,
+			logout_len, logout_len, logouttime,
+			length) < 0)
+	    {
+	      fprintf (stderr, "Out f memory");
+	      exit (EXIT_FAILURE);
+	    }
+	}
+    }
+
+  printf ("%s", line);
+  free (line);
+}
+
 static int
 print_entry (void *unused __attribute__((__unused__)),
 	     int argc, char **argv, char **azColName)
@@ -118,8 +188,9 @@ print_entry (void *unused __attribute__((__unused__)),
   char logintime[32]; /* LAST_TIMESTAMP_LEN */
   char logouttime[32]; /* LAST_TIMESTAMP_LEN */
   char length[32]; /* LAST_TIMESTAMP_LEN */
-  char *line;
   char *endptr;
+  int64_t logout_t = -1;
+  static int64_t newer_boot = -1;
 
   /* Yes, it's waste of time to let sqlite iterate through all entries
      even if we don't need more anymore, but telling sqlite we don't
@@ -166,7 +237,7 @@ print_entry (void *unused __attribute__((__unused__)),
 
   if (argv[4])
     {
-      int64_t logout_t = strtoul(argv[4], &endptr, 10);
+      logout_t = strtoul(argv[4], &endptr, 10);
       if ((errno == ERANGE && logout_t == INT64_MAX)
 	  || (endptr == argv[4]) || (*endptr != '\0'))
 	fprintf (stderr, "Invalid numeric time entry for 'logout': '%s'\n",
@@ -179,17 +250,7 @@ print_entry (void *unused __attribute__((__unused__)),
       format_time (logout_fmt, logouttime, sizeof (logouttime),
 		   logout_t/USEC_PER_SEC);
 
-      int64_t secs = (logout_t - login_t)/USEC_PER_SEC;
-      int mins  = (secs / 60) % 60;
-      int hours = (secs / 3600) % 24;
-      int days  = secs / 86400;
-
-      if (days)
-	snprintf (length, sizeof(length), "(%d+%02d:%02d)", days, hours, mins);
-      else if (hours)
-	snprintf (length, sizeof(length), " (%02d:%02d)", hours, mins);
-      else
-	snprintf (length, sizeof(length), " (00:%02d)", mins);
+      calc_time_length (length, sizeof(length), login_t, logout_t);
     }
   else /* login but no logout */
     {
@@ -252,50 +313,23 @@ print_entry (void *unused __attribute__((__unused__)),
 	}
     }
 
-  if (nohostname)
-    {
-      if (asprintf (&line, "%-8.*s %-12.12s%s %-*.*s - %-*.*s %s\n",
-		    name_len, user, tty, print_service,
-		    login_len, login_len, logintime,
-		    logout_len, logout_len, logouttime,
-		    length) < 0)
-	{
-	  fprintf (stderr, "Out f memory");
-	  exit (EXIT_FAILURE);
-	}
-    }
-  else
-    {
-      if (hostlast)
-	{
-	  if (asprintf (&line, "%-8.*s %-12.12s%s %-*.*s - %-*.*s %-12.12s %s\n",
-			name_len, user, tty, print_service,
-			login_len, login_len, logintime,
-			logout_len, logout_len, logouttime,
-			length, host) < 0)
-	    {
-	      fprintf (stderr, "Out f memory");
-	      exit (EXIT_FAILURE);
-	    }
-	}
-      else
-	{
-	  if (asprintf (&line, "%-8.*s %-12.12s %-16.*s%s %-*.*s - %-*.*s %s\n",
-			name_len, user, tty,
-			host_len, host, print_service,
-			login_len, login_len, logintime,
-			logout_len, logout_len, logouttime,
-			length) < 0)
-	    {
-	      fprintf (stderr, "Out f memory");
-	      exit (EXIT_FAILURE);
-	    }
-	}
-    }
-  free (print_service);
+  print_line (user, tty, host, print_service, logintime, logouttime, length);
 
-  printf ("%s", line);
-  free (line);
+  if (xflag && (type == BOOT_TIME) && newer_boot != -1 && logout_t != -1)
+    {
+      format_time (login_fmt, logintime, sizeof (logintime),
+		   logout_t/USEC_PER_SEC);
+      format_time (logout_fmt, logouttime, sizeof (logouttime),
+		   newer_boot/USEC_PER_SEC);
+      calc_time_length (length, sizeof(length), logout_t, newer_boot);
+
+      print_line ("shutdown", "system down", host, print_service,
+		  logintime, logouttime, length);
+    }
+  if (xflag && (type == BOOT_TIME))
+    newer_boot = login_t;
+
+  free (print_service);
 
   currentry++;
 
@@ -319,6 +353,7 @@ usage (int retval)
   fputs ("  -S, --service       Display PAM service used to login\n", output);
   fputs ("  -s, --since TIME    Display who was logged in after TIME\n", output);
   fputs ("  -t, --until TIME    Display who was logged in until TIME\n", output);
+  fputs ("  -x, --system        Display system shutdown entries\n", output);
   fputs ("TIME must be in the format \"YYYY-MM-DD HH:MM:SS\"\n", output);
   fputs ("\n", output);
 
@@ -408,15 +443,16 @@ main_last (int argc, char **argv)
     {"limit", required_argument, NULL, 'n'},
     {"present", required_argument, NULL, 'p'},
     {"nohostname", no_argument, NULL, 'R'},
-    {"since", required_argument, NULL, 's'},
     {"service", no_argument, NULL, 'S'},
+    {"since", required_argument, NULL, 's'},
+    {"system", no_argument, NULL, 'x'},
     {"until", required_argument, NULL, 'u'},
     {NULL, 0, NULL, '\0'}
   };
   char *error = NULL;
   int c;
 
-  while ((c = getopt_long (argc, argv, "af:Fn:p:RSs:t:", longopts, NULL)) != -1)
+  while ((c = getopt_long (argc, argv, "af:Fn:p:RSs:t:x", longopts, NULL)) != -1)
     {
       switch (c)
         {
@@ -461,6 +497,9 @@ main_last (int argc, char **argv)
 	      fprintf (stderr, "Invalid time value '%s'\n", optarg);
 	      exit (EXIT_FAILURE);
 	    }
+	  break;
+	case 'x':
+	  xflag = 1;
 	  break;
         default:
           usage (EXIT_FAILURE);
