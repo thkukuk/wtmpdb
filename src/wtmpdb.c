@@ -35,6 +35,8 @@
 #include <string.h>
 #include <limits.h>
 #include <getopt.h>
+#include <netdb.h>
+#include <arpa/inet.h>
 #include <sys/utsname.h>
 
 #if HAVE_AUDIT
@@ -58,8 +60,9 @@ static int after_reboot = 0;
 static int hostlast = 0;
 static int nohostname = 0;
 static int noservice = 1;
-static int xflag = 0;
+static int dflag = 0;
 static int wflag = 0;
+static int xflag = 0;
 static const int name_len = 8; /* LAST_LOGIN_LEN */
 static int login_fmt = TIMEFMT_SHORT;
 static int login_len = 16; /* 16 = short, 24 = full */
@@ -71,6 +74,44 @@ static unsigned int currentry = 0; /* number of entries already printed */
 static time_t present = 0; /* Who was present at the specified time */
 static time_t since = 0; /* Who was logged in after this time? */
 static time_t until = 0; /* Who was logged in until this time? */
+
+
+/* isipaddr - find out if string provided is an IP address or not
+   0 - no IP address
+   1 - is IP address
+*/
+static int
+isipaddr (const char *string, int *addr_type,
+          struct sockaddr_storage *addr)
+{
+  struct sockaddr_storage local_addr;
+  int is_ip;
+
+  if (addr == NULL)
+    addr = &local_addr;
+
+  memset(addr, 0, sizeof (struct sockaddr_storage));
+
+  /* first ipv4 */
+  if (inet_pton (AF_INET, string, &((struct sockaddr_in *)addr)->sin_addr) > 0)
+    {
+      if (addr_type != NULL)
+        *addr_type = AF_INET;
+      addr->ss_family = AF_INET;
+      is_ip = 1;
+    }
+  else if (inet_pton (AF_INET6, string, &((struct sockaddr_in6 *)addr)->sin6_addr) > 0)
+    { /* then ipv6 */
+      if (addr_type != NULL)
+        *addr_type = AF_INET6;
+      addr->ss_family = AF_INET6;
+      is_ip = 1;
+    }
+  else
+    is_ip = 0;
+
+  return is_ip;
+}
 
 static int
 parse_time (const char *str, time_t *time)
@@ -186,6 +227,7 @@ static int
 print_entry (void *unused __attribute__((__unused__)),
 	     int argc, char **argv, char **azColName)
 {
+  char host_buf[NI_MAXHOST];
   char logintime[32]; /* LAST_TIMESTAMP_LEN */
   char logouttime[32]; /* LAST_TIMESTAMP_LEN */
   char length[32]; /* LAST_TIMESTAMP_LEN */
@@ -314,6 +356,19 @@ print_entry (void *unused __attribute__((__unused__)),
 	}
     }
 
+  if (dflag)
+    {
+      struct sockaddr_storage addr;
+      int addr_type = 0;
+
+      if (isipaddr (host, &addr_type, &addr))
+	{
+	  if (getnameinfo ((struct sockaddr*)&addr, sizeof (addr), host_buf, sizeof (host_buf),
+			   NULL, 0, NI_NAMEREQD) == 0)
+	    host = host_buf;
+	}
+    }
+
   print_line (user, tty, host, print_service, logintime, logouttime, length);
 
   if (xflag && (type == BOOT_TIME) && newer_boot != -1 && logout_t != -1)
@@ -346,6 +401,7 @@ usage (int retval)
   fputs ("Commands: last, boot, rotate, shutdown\n\n", output);
   fputs ("Options for last:\n", output);
   fputs ("  -a, --lasthost      Display hostnames as last entry\n", output);
+  fputs ("  -d, --dns           Translate IP addresses into a hostname\n", output);
   fputs ("  -f, --file FILE     Use FILE as wtmpdb database\n", output);
   fputs ("  -F, --fulltimes     Display full times and dates\n", output);
   fputs ("  -n, --limit N       Display only first N entries\n", output);
@@ -440,6 +496,7 @@ main_last (int argc, char **argv)
 {
   struct option const longopts[] = {
     {"hostlast", no_argument, NULL, 'a'},
+    {"dns", no_argument, NULL, 'd'},
     {"file", required_argument, NULL, 'f'},
     {"fullnames", no_argument, NULL, 'w'},
     {"fulltimes", no_argument, NULL, 'F'},
@@ -455,12 +512,15 @@ main_last (int argc, char **argv)
   char *error = NULL;
   int c;
 
-  while ((c = getopt_long (argc, argv, "af:Fn:p:RSs:t:wx", longopts, NULL)) != -1)
+  while ((c = getopt_long (argc, argv, "adf:Fn:p:RSs:t:wx", longopts, NULL)) != -1)
     {
       switch (c)
         {
 	case 'a':
 	  hostlast = 1;
+	  break;
+	case 'd':
+	  dflag = 1;
 	  break;
         case 'f':
           wtmpdb_path = optarg;
@@ -522,6 +582,12 @@ main_last (int argc, char **argv)
   if (nohostname && hostlast)
     {
       fprintf (stderr, "The options -a and -R cannot be used together.\n");
+      usage (EXIT_FAILURE);
+    }
+
+  if (nohostname && dflag)
+    {
+      fprintf (stderr, "The options -d and -R cannot be used together.\n");
       usage (EXIT_FAILURE);
     }
 
