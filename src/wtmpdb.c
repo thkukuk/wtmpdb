@@ -59,6 +59,7 @@ static int hostlast = 0;
 static int nohostname = 0;
 static int noservice = 1;
 static int xflag = 0;
+static int wflag = 0;
 static const int name_len = 8; /* LAST_LOGIN_LEN */
 static int login_fmt = TIMEFMT_SHORT;
 static int login_len = 16; /* 16 = short, 24 = full */
@@ -139,7 +140,7 @@ print_line (const char *user, const char *tty, const char *host,
   if (nohostname)
     {
       if (asprintf (&line, "%-8.*s %-12.12s%s %-*.*s - %-*.*s %s\n",
-		    name_len, user, tty, print_service,
+		    wflag?(int)strlen(user):name_len, user, tty, print_service,
 		    login_len, login_len, logintime,
 		    logout_len, logout_len, logouttime,
 		    length) < 0)
@@ -153,7 +154,7 @@ print_line (const char *user, const char *tty, const char *host,
       if (hostlast)
 	{
 	  if (asprintf (&line, "%-8.*s %-12.12s%s %-*.*s - %-*.*s %-12.12s %s\n",
-			name_len, user, tty, print_service,
+			wflag?(int)strlen(user):name_len, user, tty, print_service,
 			login_len, login_len, logintime,
 			logout_len, logout_len, logouttime,
 			length, host) < 0)
@@ -165,8 +166,8 @@ print_line (const char *user, const char *tty, const char *host,
       else
 	{
 	  if (asprintf (&line, "%-8.*s %-12.12s %-16.*s%s %-*.*s - %-*.*s %s\n",
-			name_len, user, tty,
-			host_len, host, print_service,
+			wflag?(int)strlen(user):name_len, user, tty,
+			wflag?(int)strlen(host):host_len, host, print_service,
 			login_len, login_len, logintime,
 			logout_len, logout_len, logouttime,
 			length) < 0)
@@ -353,6 +354,7 @@ usage (int retval)
   fputs ("  -S, --service       Display PAM service used to login\n", output);
   fputs ("  -s, --since TIME    Display who was logged in after TIME\n", output);
   fputs ("  -t, --until TIME    Display who was logged in until TIME\n", output);
+  fputs ("  -w, --fullnames     Display full IP addresses and user and domain names\n", output);
   fputs ("  -x, --system        Display system shutdown entries\n", output);
   fputs ("TIME must be in the format \"YYYY-MM-DD HH:MM:SS\"\n", output);
   fputs ("\n", output);
@@ -439,6 +441,7 @@ main_last (int argc, char **argv)
   struct option const longopts[] = {
     {"hostlast", no_argument, NULL, 'a'},
     {"file", required_argument, NULL, 'f'},
+    {"fullnames", no_argument, NULL, 'w'},
     {"fulltimes", no_argument, NULL, 'F'},
     {"limit", required_argument, NULL, 'n'},
     {"present", required_argument, NULL, 'p'},
@@ -452,7 +455,7 @@ main_last (int argc, char **argv)
   char *error = NULL;
   int c;
 
-  while ((c = getopt_long (argc, argv, "af:Fn:p:RSs:t:x", longopts, NULL)) != -1)
+  while ((c = getopt_long (argc, argv, "af:Fn:p:RSs:t:wx", longopts, NULL)) != -1)
     {
       switch (c)
         {
@@ -497,6 +500,9 @@ main_last (int argc, char **argv)
 	      fprintf (stderr, "Invalid time value '%s'\n", optarg);
 	      exit (EXIT_FAILURE);
 	    }
+	  break;
+	case 'w':
+	  wflag = 1;
 	  break;
 	case 'x':
 	  xflag = 1;
