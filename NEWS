@@ -1,3 +1,7 @@
+Version 0.7.0
+* wtmpdb rotate: use sqlite3_bind_* internal
+* wtmpdb last: Implement -x, -d, -i and -w options
+
 Version 0.6.0
 * wtmpdb rotate: move old log entries into wtmpdb_<yyyymmdd>.db
 
