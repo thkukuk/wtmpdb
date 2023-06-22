@@ -500,10 +500,8 @@ export_row( sqlite3 *db_dest, sqlite3_stmt *sqlStatement, char **error,
    each entry.
    Returns 0 on success, -1 on failure. */
 int
-wtmpdb_logrotate  (const char *db_path,
-		   const int days,
-		   char **error,
-		   uint64_t *wtmp_start)
+wtmpdb_rotate (const char *db_path, const int days, char **error,
+	       uint64_t *wtmp_start)
 {
   sqlite3 *db_src;
   sqlite3 *db_dest;

@@ -98,7 +98,7 @@ count_entry (void *unused __attribute__((__unused__)),
 }
 
 static int
-test_logrotate (const char *db_path)
+test_rotate (const char *db_path)
 {
   char *error = NULL;
   uint64_t wtmp_start;
@@ -121,7 +121,7 @@ test_logrotate (const char *db_path)
       return 1;
     }
 
-  if (wtmpdb_logrotate (db_path, DAYS, &error, &wtmp_start) != 0)
+  if (wtmpdb_rotate (db_path, DAYS, &error, &wtmp_start) != 0)
     {
       if (error)
         {
@@ -129,7 +129,7 @@ test_logrotate (const char *db_path)
           free (error);
         }
       else
-	fprintf (stderr, "wtmpdb_logrotate failed\n");
+	fprintf (stderr, "wtmpdb_rotate failed\n");
       return 1;
     }
 
@@ -173,7 +173,7 @@ main(void)
   if (test_args (db_path, "user5", NULL, "localhost", NULL) != 0)
     return 1;
 
-  if (test_logrotate (db_path) != 0)
+  if (test_rotate (db_path) != 0)
     return 1;
 
   /* cleanup */

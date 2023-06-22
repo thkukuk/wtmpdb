@@ -4,7 +4,7 @@ LIBWTMPDB_0.1 {
 	wtmpdb_login;
 	wtmpdb_logout;
 	wtmpdb_read_all;
-	wtmpdb_logrotate;
+	wtmpdb_rotate;
 	wtmpdb_timespec2usec;
 	wtmpdb_get_id;
   local: *;

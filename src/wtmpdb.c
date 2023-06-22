@@ -469,7 +469,7 @@ usage (int retval)
 }
 
 static int
-main_logrotate (int argc, char **argv)
+main_rotate (int argc, char **argv)
 {
   struct option const longopts[] = {
     {"file", required_argument, NULL, 'f'},
@@ -503,7 +503,7 @@ main_logrotate (int argc, char **argv)
       usage (EXIT_FAILURE);
     }
 
-  if (wtmpdb_logrotate (wtmpdb_path, days, &error, &wtmp_start) != 0)
+  if (wtmpdb_rotate (wtmpdb_path, days, &error, &wtmp_start) != 0)
     {
       if (error)
         {
@@ -840,7 +840,7 @@ main (int argc, char **argv)
   else if (strcmp (argv[1], "shutdown") == 0)
     return main_shutdown (--argc, ++argv);
   else if (strcmp (argv[1], "rotate") == 0)
-    return main_logrotate (--argc, ++argv);
+    return main_rotate (--argc, ++argv);
 
   while ((c = getopt_long (argc, argv, "hv", longopts, NULL)) != -1)
     {
