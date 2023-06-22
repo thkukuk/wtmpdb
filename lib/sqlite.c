@@ -504,13 +504,11 @@ wtmpdb_logrotate  (const char *db_path,
   sqlite3 *db_dest;
   struct timespec ts_now;
   clock_gettime (CLOCK_REALTIME, &ts_now);
-  time_t rawtime = time(0); // System time: number of seconds since 00:00, Jan 1 1970 UTC
-  time(&rawtime);
-  struct tm *tm = localtime (&rawtime);
-  uint64_t login_t = (ts_now.tv_sec - days * 86400) * USEC_PER_SEC;
+  time_t offset = ts_now.tv_sec - days * 86400;
+  struct tm *tm = localtime (&offset);
+  uint64_t login_t = offset * USEC_PER_SEC;
   char date[10];
   strftime (date, 10, "%Y%m%d", tm);
-
   char *dest_path = NULL;
   char *dest_file = strdup(db_path);
   strip_extension(dest_file);

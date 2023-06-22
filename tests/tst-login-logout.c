@@ -37,6 +37,8 @@
 
 #include "wtmpdb.h"
 
+#define DAYS 2
+
 static int
 test_args (const char *db_path, const char *user, const char *tty,
 	   const char *rhost, const char *service)
@@ -118,7 +120,7 @@ test_logrotate (const char *db_path)
       return 1;
     }
 
-  if (wtmpdb_logrotate (db_path, 1, &error) != 0)
+  if (wtmpdb_logrotate (db_path, DAYS, &error) != 0)
     {
       if (error)
         {
@@ -174,9 +176,10 @@ main(void)
     return 1;
 
   /* cleanup */
-  time_t rawtime = time(0); /* System time: number of seconds since 00:00, Jan 1 1970 UTC */
-  time(&rawtime);
-  struct tm *tm = localtime (&rawtime);
+  struct timespec ts_now;
+  clock_gettime (CLOCK_REALTIME, &ts_now);
+  time_t offset = ts_now.tv_sec - DAYS * 86400;
+  struct tm *tm = localtime (&offset);
   char date[10];
   strftime (date, 10, "%Y%m%d", tm);
   char *backup_path = NULL;
