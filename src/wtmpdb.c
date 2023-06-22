@@ -503,7 +503,7 @@ main_logrotate (int argc, char **argv)
       usage (EXIT_FAILURE);
     }
 
-  if (wtmpdb_logrotate (wtmpdb_path, days, &error) != 0)
+  if (wtmpdb_logrotate (wtmpdb_path, days, &error, &wtmp_start) != 0)
     {
       if (error)
         {

@@ -442,7 +442,8 @@ wtmpdb_read_all  (const char *db_path,
 }
 
 static int
-export_row( sqlite3 *db_dest, sqlite3_stmt *sqlStatement, char **error ) {
+export_row( sqlite3 *db_dest, sqlite3_stmt *sqlStatement, char **error,
+	    uint64_t *wtmp_start) {
   char *endptr;
 
   const int type = sqlite3_column_int( sqlStatement, 1 );
@@ -489,7 +490,10 @@ export_row( sqlite3 *db_dest, sqlite3_stmt *sqlStatement, char **error ) {
        return -1;
     }
 
-   return 0;
+  if (login_t < *wtmp_start)
+    *wtmp_start = login_t;
+
+  return 0;
 }
 
 /* Reads all entries from database and calls the callback function for
@@ -498,7 +502,8 @@ export_row( sqlite3 *db_dest, sqlite3_stmt *sqlStatement, char **error ) {
 int
 wtmpdb_logrotate  (const char *db_path,
 		   const int days,
-		   char **error)
+		   char **error,
+		   uint64_t *wtmp_start)
 {
   sqlite3 *db_src;
   sqlite3 *db_dest;
@@ -563,8 +568,9 @@ wtmpdb_logrotate  (const char *db_path,
     }
 
   int rc;
+  *wtmp_start = UINT64_MAX;
   while ((rc = sqlite3_step(res)) == SQLITE_ROW) {
-    export_row( db_dest, res, error );
+    export_row( db_dest, res, error, wtmp_start );
   }
   if (rc != SQLITE_DONE) {
     if (asprintf (error, "SQL error: %s", sqlite3_errmsg(db_src)) < 0)
