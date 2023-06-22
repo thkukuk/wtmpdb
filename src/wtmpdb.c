@@ -478,6 +478,8 @@ main_rotate (int argc, char **argv)
   };
   char *error = NULL;
   int days = LOGROTATE_DAYS;
+  char *wtmpdb_backup = NULL;
+  uint64_t entries = 0;
 
   int c;
 
@@ -503,7 +505,8 @@ main_rotate (int argc, char **argv)
       usage (EXIT_FAILURE);
     }
 
-  if (wtmpdb_rotate (wtmpdb_path, days, &error, &wtmp_start) != 0)
+  if (wtmpdb_rotate (wtmpdb_path, days, &error,
+		     &wtmpdb_backup, &entries) != 0)
     {
       if (error)
         {
@@ -516,10 +519,13 @@ main_rotate (int argc, char **argv)
       exit (EXIT_FAILURE);
     }
 
-  char wtmptime[32];
-  format_time (TIMEFMT_CTIME, wtmptime, sizeof (wtmptime),
-	       wtmp_start/USEC_PER_SEC);
-  printf ("\n%s begins %s\n", wtmpdb_path, wtmptime);
+  if (entries == 0 || wtmpdb_backup == NULL)
+    printf ("No old entries found\n");
+  else
+    printf ("%lli entries moved to %s\n", 
+	    (long long unsigned int)entries, wtmpdb_backup);
+
+  free (wtmpdb_backup);
 
   return EXIT_SUCCESS;
 }

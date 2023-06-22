@@ -101,7 +101,6 @@ static int
 test_rotate (const char *db_path)
 {
   char *error = NULL;
-  uint64_t wtmp_start;
 
   counter = 0;
   if (wtmpdb_read_all (db_path, count_entry, &error) != 0)
@@ -121,7 +120,7 @@ test_rotate (const char *db_path)
       return 1;
     }
 
-  if (wtmpdb_rotate (db_path, DAYS, &error, &wtmp_start) != 0)
+  if (wtmpdb_rotate (db_path, DAYS, &error, NULL, NULL) != 0)
     {
       if (error)
         {

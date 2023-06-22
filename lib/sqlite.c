@@ -29,6 +29,7 @@
 #include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <libgen.h>
 #include <string.h>
 #include <limits.h>
@@ -442,8 +443,8 @@ wtmpdb_read_all  (const char *db_path,
 }
 
 static int
-export_row( sqlite3 *db_dest, sqlite3_stmt *sqlStatement, char **error,
-	    uint64_t *wtmp_start) {
+export_row (sqlite3 *db_dest, sqlite3_stmt *sqlStatement, char **error)
+{
   char *endptr;
 
   const int type = sqlite3_column_int( sqlStatement, 1 );
@@ -490,9 +491,6 @@ export_row( sqlite3 *db_dest, sqlite3_stmt *sqlStatement, char **error,
        return -1;
     }
 
-  if (login_t < *wtmp_start)
-    *wtmp_start = login_t;
-
   return 0;
 }
 
@@ -501,10 +499,11 @@ export_row( sqlite3 *db_dest, sqlite3_stmt *sqlStatement, char **error,
    Returns 0 on success, -1 on failure. */
 int
 wtmpdb_rotate (const char *db_path, const int days, char **error,
-	       uint64_t *wtmp_start)
+	       char **wtmpdb_name, uint64_t *entries)
 {
   sqlite3 *db_src;
   sqlite3 *db_dest;
+  uint64_t counter = 0;
   struct timespec ts_now;
   clock_gettime (CLOCK_REALTIME, &ts_now);
   time_t offset = ts_now.tv_sec - days * 86400;
@@ -515,6 +514,7 @@ wtmpdb_rotate (const char *db_path, const int days, char **error,
   char *dest_path = NULL;
   char *dest_file = strdup(db_path);
   strip_extension(dest_file);
+
   if (asprintf (&dest_path, "%s/%s_%s.db", dirname(dest_file), basename(dest_file), date) < 0)
     {
       *error = strdup ("Out of memory");
@@ -566,21 +566,22 @@ wtmpdb_rotate (const char *db_path, const int days, char **error,
     }
 
   int rc;
-  *wtmp_start = UINT64_MAX;
   while ((rc = sqlite3_step(res)) == SQLITE_ROW) {
-    export_row( db_dest, res, error, wtmp_start );
+    export_row (db_dest, res, error);
+    ++counter;
   }
-  if (rc != SQLITE_DONE) {
-    if (asprintf (error, "SQL error: %s", sqlite3_errmsg(db_src)) < 0)
-      *error = strdup ("Out of memory");
+  if (rc != SQLITE_DONE)
+    {
+      if (asprintf (error, "SQL error: %s", sqlite3_errmsg(db_src)) < 0)
+	*error = strdup ("Out of memory");
 
-    sqlite3_finalize(res);
-    sqlite3_close (db_src);
-    sqlite3_close (db_dest);
-    free(dest_path);
-    free(dest_file);
-    return -1;
-  }
+      sqlite3_finalize(res);
+      sqlite3_close (db_src);
+      sqlite3_close (db_dest);
+      free(dest_path);
+      free(dest_file);
+      return -1;
+    }
 
   sqlite3_finalize(res);
 
@@ -633,6 +634,17 @@ wtmpdb_rotate (const char *db_path, const int days, char **error,
   sqlite3_finalize(res);
   sqlite3_close (db_src);
   sqlite3_close (db_dest);
+
+  if (counter > 0)
+    {
+      if (wtmpdb_name)
+	*wtmpdb_name = strdup (dest_path);
+      if (entries)
+	*entries = counter;
+    }
+  else
+    unlink (dest_path);
+
   free(dest_path);
   free(dest_file);
 
