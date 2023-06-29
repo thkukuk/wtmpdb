@@ -115,16 +115,38 @@ isipaddr (const char *string, int *addr_type,
 }
 
 static int
-parse_time (const char *str, time_t *time)
+parse_time (const char *str, time_t *arg)
 {
   struct tm res;
 
-  char *r = strptime (str, "%Y-%m-%d %T",  &res);
+  if (strcmp (str, "today") == 0)
+    {
+      time_t t = time (NULL);
+      localtime_r (&t, &res);
+      res.tm_isdst = -1;
+      res.tm_sec = res.tm_min = res.tm_hour = 0;
+    }
+  else if (strcmp (str, "yesterday") == 0)
+    {
+      time_t t = time (NULL);
+      localtime_r (&t, &res);
+      res.tm_isdst = -1;
+      res.tm_mday--;
+      res.tm_sec = res.tm_min = res.tm_hour = 0;
+    }
+  else
+    {
+      char *r = strptime (str, "%Y-%m-%d %T",  &res);
 
-  if (r == NULL || *r != '\0')
-    return -1;
+      if (r == NULL || *r != '\0')
+	{
+	  r = strptime (str, "%Y-%m-%d",  &res);
+	  if (r == NULL || *r != '\0')
+	    return -1;
+	}
+    }
 
-  *time = mktime (&res);
+  *arg = mktime (&res);
 
   return 0;
 }
@@ -522,7 +544,7 @@ main_rotate (int argc, char **argv)
   if (entries == 0 || wtmpdb_backup == NULL)
     printf ("No old entries found\n");
   else
-    printf ("%lli entries moved to %s\n", 
+    printf ("%lli entries moved to %s\n",
 	    (long long unsigned int)entries, wtmpdb_backup);
 
   free (wtmpdb_backup);

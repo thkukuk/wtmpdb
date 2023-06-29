@@ -189,7 +189,11 @@
 	    </varlistentry>
 	  </variablelist>
 	  <para>
-	    <replaceable>TIME</replaceable> must be in the format <option>"YYYY-MM-DD HH:MM:SS"</option>.
+	    <replaceable>TIME</replaceable> must be in the format
+	    <option>"YYYY-MM-DD HH:MM:SS"</option>,
+	    <option>"YYYY-MM-DD"</option>, <option>"today"</option> or
+	    <option>"yesterday"</option> (time will be set to 00:00:00
+	    if not specified).
 	  </para>
 	</listitem>
       </varlistentry>
