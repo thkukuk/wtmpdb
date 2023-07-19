@@ -28,7 +28,6 @@ add_project_arguments(['-D_GNU_SOURCE=1',
                        '-D_TIME_BITS=64'], language : 'c')
 
 possible_cc_flags = [
-                  '-flto=auto',
                   '-ffat-lto-objects',
 		  '-fstack-protector-strong',
 		  '-funwind-tables',
