@@ -47,7 +47,11 @@ possible_cc_flags = [
 		  '-Wstrict-prototypes',
 		  '-Wundef',
 		  ]
+possible_ld_flags = [
+                  '-flto',
+                  ]
 add_project_arguments(cc.get_supported_arguments(possible_cc_flags), language : 'c')
+add_project_link_arguments(cc.get_supported_arguments(possible_ld_flags), language : 'c')
 
 fs = import('fs')
 if get_option('split-usr') == 'auto'
