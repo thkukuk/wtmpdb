@@ -1,3 +1,7 @@
+Version 0.8.0
+* Fix linking with clang
+* wtmdb boottime: show boot time
+
 Version 0.7.1
 * wtmpdb last: Support "YYYY-MM-DD", "today" and "yesterday" as time option
 
