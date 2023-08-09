@@ -650,3 +650,55 @@ wtmpdb_rotate (const char *db_path, const int days, char **error,
 
   return 0;
 }
+
+static uint64_t
+search_boottime (sqlite3 *db, char **error)
+{
+  uint64_t boottime = 0;
+  sqlite3_stmt *res;
+  char *sql = "SELECT Login FROM wtmp WHERE User = 'reboot' ORDER BY Login DESC LIMIT 1;";
+
+  if (sqlite3_prepare_v2 (db, sql, -1, &res, 0) != SQLITE_OK)
+    {
+      if (error)
+        if (asprintf (error, "Failed to execute statement: %s",
+                      sqlite3_errmsg (db)) < 0)
+          *error = strdup ("Out of memory");
+
+      return -1;
+    }
+
+  int step = sqlite3_step (res);
+
+  if (step == SQLITE_ROW)
+    boottime = sqlite3_column_int64 (res, 0);
+  else
+    {
+      if (error)
+        if (asprintf (error, "Boot time not found (%d)", step) < 0)
+          *error = strdup("Out of memory");
+
+      sqlite3_finalize (res);
+      return -1;
+    }
+
+  sqlite3_finalize (res);
+
+  return boottime;
+}
+
+uint64_t
+wtmpdb_get_boottime (const char *db_path, char **error)
+{
+  sqlite3 *db;
+  uint64_t retval;
+
+  if ((db = open_database_ro (db_path?db_path:_PATH_WTMPDB, error)) == NULL)
+    return -1;
+
+  retval = search_boottime (db, error);
+
+  sqlite3_close (db);
+
+  return retval;
+}

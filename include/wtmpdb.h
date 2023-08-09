@@ -57,6 +57,9 @@ extern int wtmpdb_read_all (const char *db_path,
 extern int wtmpdb_rotate (const char *db_path, const int days, char **error, 
 			  char **wtmpdb_name, uint64_t *entries);
 
+/* Returns last "BOOT_TIME" entry as usec */
+extern uint64_t wtmpdb_get_boottime (const char *db_path, char **error);
+
 /* helper function */
 extern int64_t wtmpdb_get_id (const char *db_path, const char *tty,
 			      char **error);

@@ -12,3 +12,8 @@ LIBWTMPDB_0.7 {
   global:
         wtmpdb_rotate;
 } LIBWTMPDB_0.1;
+LIBWTMPDB_0.8 {
+  global:
+        wtmpdb_get_boottime;
+} LIBWTMPDB_0.7;
+

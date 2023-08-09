@@ -452,7 +452,7 @@ usage (int retval)
   FILE *output = (retval != EXIT_SUCCESS) ? stderr : stdout;
 
   fprintf (output, "Usage: wtmpdb [command] [options]\n");
-  fputs ("Commands: last, boot, rotate, shutdown\n\n", output);
+  fputs ("Commands: last, boot, boottime, rotate, shutdown\n\n", output);
   fputs ("Options for last:\n", output);
   fputs ("  -a, --hostlast      Display hostnames as last entry\n", output);
   fputs ("  -d, --dns           Translate IP addresses into a hostname\n", output);
@@ -471,6 +471,10 @@ usage (int retval)
   fputs ("\n", output);
 
   fputs ("Options for boot (writes boot entry to wtmpdb):\n", output);
+  fputs ("  -f, --file FILE     Use FILE as wtmpdb database\n", output);
+  fputs ("\n", output);
+
+  fputs ("Options for boottime (print time of last system boot):\n", output);
   fputs ("  -f, --file FILE     Use FILE as wtmpdb database\n", output);
   fputs ("\n", output);
 
@@ -781,6 +785,53 @@ main_boot (int argc, char **argv)
 }
 
 static int
+main_boottime (int argc, char **argv)
+{
+  struct option const longopts[] = {
+    {"file", required_argument, NULL, 'f'},
+    {NULL, 0, NULL, '\0'}
+  };
+  char *error = NULL;
+  int c;
+  uint64_t boottime;
+
+  while ((c = getopt_long (argc, argv, "f:", longopts, NULL)) != -1)
+    {
+      switch (c)
+        {
+        case 'f':
+          wtmpdb_path = optarg;
+          break;
+        default:
+          usage (EXIT_FAILURE);
+          break;
+        }
+    }
+
+  if (argc > optind)
+    {
+      fprintf (stderr, "Unexpected argument: %s\n", argv[optind]);
+      usage (EXIT_FAILURE);
+    }
+
+  boottime = wtmpdb_get_boottime (wtmpdb_path, &error);
+  if (error)
+    {
+      fprintf (stderr, "Couldn't read boot entry: %s\n", error);
+      free (error);
+      exit (EXIT_FAILURE);
+    }
+
+  char timebuf[32];
+  format_time (TIMEFMT_CTIME, timebuf, sizeof (timebuf),
+	       boottime/USEC_PER_SEC);
+
+  printf ("system boot %s\n", timebuf);
+
+  return EXIT_SUCCESS;
+}
+
+static int
 main_shutdown (int argc, char **argv)
 {
   struct option const longopts[] = {
@@ -867,6 +918,8 @@ main (int argc, char **argv)
     return main_boot (--argc, ++argv);
   else if (strcmp (argv[1], "shutdown") == 0)
     return main_shutdown (--argc, ++argv);
+  else if (strcmp (argv[1], "boottime") == 0)
+    return main_boottime (--argc, ++argv);
   else if (strcmp (argv[1], "rotate") == 0)
     return main_rotate (--argc, ++argv);
 
