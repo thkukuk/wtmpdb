@@ -9,7 +9,7 @@ Building with Meson is quite simple:
 ```shell
 $ meson setup build
 $ meson compile -C build
-$ meson compile -C build test
+$ meson test -C build
 $ sudo meson install -C build
 ```
 
