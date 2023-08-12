@@ -17,7 +17,7 @@ There is also a more [technical document](https://github.com/thkukuk/utmpx/blob/
 The main features of `wtmpdb` are:
 
 * It's using sqlite3 as database backend.
-* Data is mainly collected via a PAM module, so that every tools can make use of it, without modifying existing packages. For cases where this is not possible, there is a library `libwtmpdb`.
+* Data is mainly collected via a PAM module, so that every tool can make use of it, without modifying existing packages. For cases where this is not possible, there is a library `libwtmpdb`.
 * The `wtmpdb last` output is as compatible as possible with the old `last` implementation, but not all options are yet supported. For compatibility reasons, a symlink `last` pointing to `wtmpdb` can be created.
 
 **IMPORTANT** To be Y2038 safe on 32bit architectures, the binaries needs to be build with a **64bit time_t**. This should be the standard on 64bit architectures.
