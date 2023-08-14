@@ -735,18 +735,23 @@ main_boot (int argc, char **argv)
 {
   struct option const longopts[] = {
     {"file", required_argument, NULL, 'f'},
+    {"quiet", no_argument, NULL, 'q'},
     {NULL, 0, NULL, '\0'}
   };
   char *error = NULL;
   int c;
+  int quiet = 0;
 
-  while ((c = getopt_long (argc, argv, "f:", longopts, NULL)) != -1)
+  while ((c = getopt_long (argc, argv, "f:q", longopts, NULL)) != -1)
     {
       switch (c)
         {
         case 'f':
           wtmpdb_path = optarg;
           break;
+	case 'q':
+	  quiet = 1;
+	  break;
         default:
           usage (EXIT_FAILURE);
           break;
@@ -764,9 +769,27 @@ main_boot (int argc, char **argv)
 
   struct timespec ts_now;
   struct timespec ts_boot;
+  struct timespec ts_empty = { .tv_sec = 0, .tv_nsec = 0 };
   clock_gettime (CLOCK_REALTIME, &ts_now);
   clock_gettime (CLOCK_BOOTTIME, &ts_boot);
   uint64_t time = wtmpdb_timespec2usec (diff_timespec(&ts_now, &ts_boot));
+  uint64_t now = wtmpdb_timespec2usec (diff_timespec(&ts_now, &ts_empty));
+
+  if ((now - time) > 300 * USEC_PER_SEC /* 5 minutes */)
+    {
+      if (!quiet)
+	{
+	  char timebuf[32];
+	  printf ("Boot time too far in the past, using current time:\n");
+	  format_time (TIMEFMT_CTIME, timebuf, sizeof (timebuf),
+		       time/USEC_PER_SEC);
+	  printf ("Boot time: %s\n", timebuf);
+	  format_time (TIMEFMT_CTIME, timebuf, sizeof (timebuf),
+		       now/USEC_PER_SEC);
+	  printf ("Current time: %s\n", timebuf);
+	}
+      time = now;
+    }
 
 #if HAVE_AUDIT
   log_audit (AUDIT_SYSTEM_BOOT);
