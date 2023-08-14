@@ -46,8 +46,8 @@ test_args (const char *db_path, const char *user, const char *tty,
   char *error = NULL;
   int64_t id;
   struct timespec ts;
-  int64_t login_t = -1;
-  int64_t logout_t = -1;
+  uint64_t login_t;
+  uint64_t logout_t;
 
   clock_gettime (CLOCK_REALTIME, &ts);
   ts.tv_sec -= 259200; /* three days behind */

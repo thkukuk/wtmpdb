@@ -70,8 +70,8 @@ static int login_len = 16; /* 16 = short, 24 = full */
 static int logout_fmt = TIMEFMT_HHMM;
 static int logout_len = 5; /* 5 = short, 24 = full */
 static const int host_len = 16; /* LAST_DOMAIN_LEN */
-static unsigned int maxentries = 0; /* max number of entries to show */
-static unsigned int currentry = 0; /* number of entries already printed */
+static unsigned long maxentries = 0; /* max number of entries to show */
+static unsigned long currentry = 0; /* number of entries already printed */
 static time_t present = 0; /* Who was present at the specified time */
 static time_t since = 0; /* Who was logged in after this time? */
 static time_t until = 0; /* Who was logged in until this time? */
@@ -152,22 +152,27 @@ parse_time (const char *str, time_t *arg)
 }
 
 static void
-format_time (int fmt, char *dst, size_t dstlen, time_t t)
+format_time (int fmt, char *dst, size_t dstlen, uint64_t time)
 {
   switch (fmt)
     {
     case TIMEFMT_CTIME:
-      snprintf (dst, dstlen, "%s", ctime (&t));
-      dst[strlen (dst)-1] = '\0'; /* Remove trailing '\n' */
-      break;
+      {
+	time_t t = (time_t)time;
+	snprintf (dst, dstlen, "%s", ctime (&t));
+	dst[strlen (dst)-1] = '\0'; /* Remove trailing '\n' */
+	break;
+      }
     case TIMEFMT_SHORT:
       {
+	time_t t = (time_t)time;
 	struct tm *tm = localtime (&t);
 	strftime (dst, dstlen, "%a %b %e %H:%M", tm);
 	break;
       }
     case TIMEFMT_HHMM:
       {
+	time_t t = (time_t)time;
 	struct tm *tm = localtime (&t);
 	strftime (dst, dstlen, "%H:%M", tm);
 	break;
@@ -178,19 +183,19 @@ format_time (int fmt, char *dst, size_t dstlen, time_t t)
 }
 
 static void
-calc_time_length(char *dst, size_t dstlen, int64_t start, int64_t stop)
+calc_time_length(char *dst, size_t dstlen, uint64_t start, uint64_t stop)
 {
-  int64_t secs = (stop - start)/USEC_PER_SEC;
-  int mins  = (secs / 60) % 60;
-  int hours = (secs / 3600) % 24;
-  int days  = secs / 86400;
+  uint64_t secs = (stop - start)/USEC_PER_SEC;
+  uint64_t mins  = (secs / 60) % 60;
+  uint64_t hours = (secs / 3600) % 24;
+  uint64_t days  = secs / 86400;
 
   if (days)
-    snprintf (dst, dstlen, "(%d+%02d:%02d)", days, hours, mins);
+    snprintf (dst, dstlen, "(%ld+%02ld:%02ld)", days, hours, mins);
   else if (hours)
-    snprintf (dst, dstlen, " (%02d:%02d)", hours, mins);
+    snprintf (dst, dstlen, " (%02ld:%02ld)", hours, mins);
   else
-    snprintf (dst, dstlen, " (00:%02d)", mins);
+    snprintf (dst, dstlen, " (00:%02ld)", mins);
 }
 
 static void
@@ -255,8 +260,8 @@ print_entry (void *unused __attribute__((__unused__)),
   char logouttime[32]; /* LAST_TIMESTAMP_LEN */
   char length[32]; /* LAST_TIMESTAMP_LEN */
   char *endptr;
-  int64_t logout_t = -1;
-  static int64_t newer_boot = -1;
+  uint64_t logout_t = 0;
+  static uint64_t newer_boot = 0;
 
   /* Yes, it's waste of time to let sqlite iterate through all entries
      even if we don't need more anymore, but telling sqlite we don't
@@ -425,7 +430,7 @@ print_entry (void *unused __attribute__((__unused__)),
 
   print_line (user, tty, host, print_service, logintime, logouttime, length);
 
-  if (xflag && (type == BOOT_TIME) && newer_boot != -1 && logout_t != -1)
+  if (xflag && (type == BOOT_TIME) && newer_boot != 0 && logout_t != 0)
     {
       format_time (login_fmt, logintime, sizeof (logintime),
 		   logout_t/USEC_PER_SEC);
@@ -601,7 +606,7 @@ main_last (int argc, char **argv)
 	  iflag = 1;
 	  break;
 	case 'n':
-	  maxentries = atoi (optarg);
+	  maxentries = strtoul (optarg, NULL, 10);
 	  break;
 	case 'p':
 	  if (parse_time (optarg, &present) < 0)
@@ -761,7 +766,7 @@ main_boot (int argc, char **argv)
   struct timespec ts_boot;
   clock_gettime (CLOCK_REALTIME, &ts_now);
   clock_gettime (CLOCK_BOOTTIME, &ts_boot);
-  int64_t time = wtmpdb_timespec2usec (diff_timespec(&ts_now, &ts_boot));
+  uint64_t time = wtmpdb_timespec2usec (diff_timespec(&ts_now, &ts_boot));
 
 #if HAVE_AUDIT
   log_audit (AUDIT_SYSTEM_BOOT);
@@ -880,7 +885,7 @@ main_shutdown (int argc, char **argv)
 
   struct timespec ts;
   clock_gettime (CLOCK_REALTIME, &ts);
-  int64_t time = wtmpdb_timespec2usec (ts);
+  uint64_t time = wtmpdb_timespec2usec (ts);
 
   if (wtmpdb_logout (wtmpdb_path, id, time, &error) < 0)
     {

@@ -57,7 +57,7 @@ logwtmpdb (const char *db_path, const char *tty, const char *name,
 
   clock_gettime (CLOCK_REALTIME, &ts);
 
-  int64_t time = wtmpdb_timespec2usec (ts);
+  uint64_t time = wtmpdb_timespec2usec (ts);
 
   if (error)
     *error = NULL;

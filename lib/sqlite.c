@@ -59,7 +59,7 @@ static void strip_extension(char *in_str)
     static const int max_ext_len = 4;
 
     /* Check chars starting at end of string to find last '.' */
-    for (ssize_t i = strlen(in_str); i > (name_min_len + max_ext_len); i--)
+    for (size_t i = strlen(in_str); i > (name_min_len + max_ext_len); i--)
     {
         if (in_str[i] == '.')
         {
@@ -397,7 +397,7 @@ int64_t
 wtmpdb_get_id (const char *db_path, const char *tty, char **error)
 {
   sqlite3 *db;
-  int retval;
+  int64_t retval;
 
   if ((db = open_database_ro (db_path?db_path:_PATH_WTMPDB, error)) == NULL)
     return -1;
@@ -458,20 +458,14 @@ export_row (sqlite3 *db_dest, sqlite3_stmt *sqlStatement, char **error)
     fprintf (stderr, "Invalid numeric time entry for 'login': '%s'\n",
 	     sqlite3_column_text( sqlStatement, 5 ));
 
-  int id = add_entry (db_dest,
-		      type,
-		      user,
-		      login_t,
-		      tty,
-		      host,
-		      service,
-		      error);
+  int64_t id = add_entry (db_dest, type, user, login_t, tty, host,
+			  service, error);
   if (id >=0)
     {
       const char *logout = (const char*)sqlite3_column_text( sqlStatement, 4 );
       if (logout)
 	{
-          int64_t logout_t = strtoul(logout, &endptr, 10);
+          uint64_t logout_t = strtoul(logout, &endptr, 10);
 	  if ((errno == ERANGE && logout_t == INT64_MAX)
 	      || (endptr == logout) || (*endptr != '\0'))
 	  {
@@ -665,13 +659,13 @@ search_boottime (sqlite3 *db, char **error)
                       sqlite3_errmsg (db)) < 0)
           *error = strdup ("Out of memory");
 
-      return -1;
+      return 0;
     }
 
   int step = sqlite3_step (res);
 
   if (step == SQLITE_ROW)
-    boottime = sqlite3_column_int64 (res, 0);
+    boottime = (uint64_t)sqlite3_column_int64 (res, 0);
   else
     {
       if (error)
@@ -679,7 +673,7 @@ search_boottime (sqlite3 *db, char **error)
           *error = strdup("Out of memory");
 
       sqlite3_finalize (res);
-      return -1;
+      return 0;
     }
 
   sqlite3_finalize (res);
@@ -694,7 +688,7 @@ wtmpdb_get_boottime (const char *db_path, char **error)
   uint64_t retval;
 
   if ((db = open_database_ro (db_path?db_path:_PATH_WTMPDB, error)) == NULL)
-    return -1;
+    return 0;
 
   retval = search_boottime (db, error);
 
