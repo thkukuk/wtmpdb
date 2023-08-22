@@ -1,7 +1,7 @@
 project(
   'wtmpdb',
   'c',
-  meson_version : '>= 0.53.0',
+  meson_version : '>= 0.61.0',
   default_options : [
                   'prefix=/usr',
                   'sysconfdir=/etc',
