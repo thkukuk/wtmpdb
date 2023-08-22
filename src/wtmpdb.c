@@ -36,6 +36,7 @@
 #include <limits.h>
 #include <getopt.h>
 #include <netdb.h>
+#include <inttypes.h>
 #include <arpa/inet.h>
 #include <sys/utsname.h>
 
@@ -186,16 +187,16 @@ static void
 calc_time_length(char *dst, size_t dstlen, uint64_t start, uint64_t stop)
 {
   uint64_t secs = (stop - start)/USEC_PER_SEC;
-  uint64_t mins  = (secs / 60) % 60;
-  uint64_t hours = (secs / 3600) % 24;
+  int mins  = (secs / 60) % 60;
+  int hours = (secs / 3600) % 24;
   uint64_t days  = secs / 86400;
 
   if (days)
-    snprintf (dst, dstlen, "(%ld+%02ld:%02ld)", days, hours, mins);
+    snprintf (dst, dstlen, "(%" PRId64 "+%02d:%02d)", days, hours, mins);
   else if (hours)
-    snprintf (dst, dstlen, " (%02ld:%02ld)", hours, mins);
+    snprintf (dst, dstlen, " (%02d:%02d)", hours, mins);
   else
-    snprintf (dst, dstlen, " (00:%02ld)", mins);
+    snprintf (dst, dstlen, " (00:%02d)", mins);
 }
 
 static void
