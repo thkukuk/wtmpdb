@@ -1,3 +1,7 @@
+Version 0.9.1
+* Require meson 0.61.0 or newer
+* Fix printf format specifier on 32bit (#8)
+
 Version 0.9.0
 * Fix lot of 32bit/64bit signed/unsiged int conversations
 * Try to autodetect systemctl soft-reboot and use current
