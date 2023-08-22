@@ -14,7 +14,9 @@ jobs:
       with:
         action: build
         options: --verbose
+        meson-version: 0.61.4
     - uses: BSFishy/meson-build@v1.0.3
       with:
         action: test
         options: --verbose
+        meson-version: 0.61.4

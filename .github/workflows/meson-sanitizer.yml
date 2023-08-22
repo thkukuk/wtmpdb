@@ -16,9 +16,11 @@ jobs:
         directory: build
         setup-options: -Db_sanitize=address,undefined
         options: --verbose
+        meson-version: 0.61.4
     - uses: BSFishy/meson-build@v1.0.3
       with:
         action: test
         directory: build
         setup-options: -Db_sanitize=address,undefined
         options: --verbose
+        meson-version: 0.61.4
