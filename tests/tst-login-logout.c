@@ -37,11 +37,9 @@
 
 #include "wtmpdb.h"
 
-#define DAYS 2
-
 static int
 test_args (const char *db_path, const char *user, const char *tty,
-	   const char *rhost, const char *service)
+	   const char *rhost, const char *service, const int days)
 {
   char *error = NULL;
   int64_t id;
@@ -50,7 +48,7 @@ test_args (const char *db_path, const char *user, const char *tty,
   uint64_t logout_t;
 
   clock_gettime (CLOCK_REALTIME, &ts);
-  ts.tv_sec -= 259200; /* three days behind */
+  ts.tv_sec -= 86400 * days;
   login_t = wtmpdb_timespec2usec (ts);
 
   if ((id = wtmpdb_login (db_path, USER_PROCESS, user,
@@ -98,7 +96,7 @@ count_entry (void *unused __attribute__((__unused__)),
 }
 
 static int
-test_rotate (const char *db_path)
+test_rotate (const char *db_path, const int days)
 {
   char *error = NULL;
 
@@ -114,13 +112,13 @@ test_rotate (const char *db_path)
 	fprintf (stderr, "wtmpdb_read_all failed\n");
       return 1;
     }
-  if (counter != 5)
+  if (counter != ((days-1) * 5))
     {
       fprintf (stderr, "wtmpdb_read_all returned %d expected 5\n", counter);
       return 1;
     }
 
-  if (wtmpdb_rotate (db_path, DAYS, &error, NULL, NULL) != 0)
+  if (wtmpdb_rotate (db_path, days, &error, NULL, NULL) != 0)
     {
       if (error)
         {
@@ -144,7 +142,7 @@ test_rotate (const char *db_path)
 	fprintf (stderr, "wtmpdb_read_all failed\n");
       return 1;
     }
-  if (counter != 0)
+  if (counter != (days-2) * 5)
     {
       fprintf (stderr, "wtmpdb_read_all returned %d expected 0\n", counter);
       return 1;
@@ -161,24 +159,38 @@ main(void)
   /* make sure there is no old stuff flying around. The backup file is not so important. */
   remove (db_path);
 
-  if (test_args (db_path, "user1", "test-tty", "localhost", NULL) != 0)
+  if (test_args (db_path, "user1", "test-tty", "localhost", NULL, 4) != 0)
     return 1;
-  if (test_args (db_path, "user2", NULL, NULL, NULL) != 0)
+  if (test_args (db_path, "user2", NULL, NULL, NULL, 4) != 0)
     return 1;
-  if (test_args (db_path, "user3", NULL, NULL, NULL) != 0)
+  if (test_args (db_path, "user3", NULL, NULL, NULL, 4) != 0)
     return 1;
-  if (test_args (db_path, "user4", "test-tty", NULL, NULL) != 0)
+  if (test_args (db_path, "user4", "test-tty", NULL, NULL, 4) != 0)
     return 1;
-  if (test_args (db_path, "user5", NULL, "localhost", NULL) != 0)
+  if (test_args (db_path, "user5", NULL, "localhost", NULL, 4) != 0)
     return 1;
 
-  if (test_rotate (db_path) != 0)
+  if (test_args (db_path, "user1", "test-tty", "localhost", NULL, 3) != 0)
+    return 1;
+  if (test_args (db_path, "user2", NULL, NULL, NULL, 3) != 0)
+    return 1;
+  if (test_args (db_path, "user3", NULL, NULL, NULL, 3) != 0)
+    return 1;
+  if (test_args (db_path, "user4", "test-tty", NULL, NULL, 3) != 0)
+    return 1;
+  if (test_args (db_path, "user5", NULL, "localhost", NULL, 3) != 0)
+    return 1;
+
+  if (test_rotate (db_path, 3) != 0)
+    return 1;
+
+  if (test_rotate (db_path, 2) != 0)
     return 1;
 
   /* cleanup */
   struct timespec ts_now;
   clock_gettime (CLOCK_REALTIME, &ts_now);
-  time_t offset = ts_now.tv_sec - DAYS * 86400;
+  time_t offset = ts_now.tv_sec - 2 * 86400;
   struct tm *tm = localtime (&offset);
   char date[10];
   strftime (date, 10, "%Y%m%d", tm);
