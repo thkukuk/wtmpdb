@@ -691,11 +691,15 @@ main_last (int argc, char **argv)
       exit (EXIT_FAILURE);
     }
 
-  char wtmptime[32];
-  format_time (TIMEFMT_CTIME, wtmptime, sizeof (wtmptime),
-	       wtmp_start/USEC_PER_SEC);
-  printf ("\n%s begins %s\n", wtmpdb_path, wtmptime);
-
+  if (wtmp_start == UINT64_MAX)
+    printf ("%s has no entries\n", wtmpdb_path);
+  else
+    {
+      char wtmptime[32];
+      format_time (TIMEFMT_CTIME, wtmptime, sizeof (wtmptime),
+		   wtmp_start/USEC_PER_SEC);
+      printf ("\n%s begins %s\n", wtmpdb_path, wtmptime);
+    }
   return EXIT_SUCCESS;
 }
 
