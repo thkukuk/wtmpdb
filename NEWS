@@ -1,3 +1,6 @@
+Version 0.9.2
+* wtmpdb last: don't print date in the future if there is no db entry
+
 Version 0.9.1
 * Require meson 0.61.0 or newer
 * Fix printf format specifier on 32bit (#8)
