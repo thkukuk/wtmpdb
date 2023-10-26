@@ -11,7 +11,7 @@ project(
 		  'b_pie=true',
 		  'warning_level=3',],
   license : ['BSD-2-Clause',],
-  version : '0.9.2',
+  version : '0.9.3',
 )
 
 conf = configuration_data()
