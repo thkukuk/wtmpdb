@@ -9,6 +9,7 @@ project(
                   'buildtype=debugoptimized',
   		  'default_library=shared',
 		  'b_pie=true',
+                  'b_lto=true',
 		  'warning_level=3',],
   license : ['BSD-2-Clause',],
   version : '0.9.3',
@@ -28,8 +29,6 @@ add_project_arguments(['-D_GNU_SOURCE=1',
                        '-D_TIME_BITS=64'], language : 'c')
 
 possible_cc_flags = [
-                  '-flto=auto',
-                  '-ffat-lto-objects',
 		  '-fstack-protector-strong',
 		  '-funwind-tables',
 		  '-fasynchronous-unwind-tables',
@@ -47,11 +46,7 @@ possible_cc_flags = [
 		  '-Wstrict-prototypes',
 		  '-Wundef',
 		  ]
-possible_ld_flags = [
-                  '-flto',
-                  ]
 add_project_arguments(cc.get_supported_arguments(possible_cc_flags), language : 'c')
-add_project_link_arguments(cc.get_supported_arguments(possible_ld_flags), language : 'c')
 
 fs = import('fs')
 if get_option('split-usr') == 'auto'
