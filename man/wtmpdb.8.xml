@@ -40,7 +40,9 @@
     <variablelist>
       <varlistentry>
         <term><command>last</command>
-	<optional><replaceable>option</replaceable>…</optional></term>
+	<optional><replaceable>option</replaceable>…</optional>
+	<optional><replaceable>username</replaceable>…</optional>
+	<optional><replaceable>tty</replaceable>…</optional></term>
         <listitem>
           <para>
 	    <command>wtmpdb last</command> goes through the
@@ -48,8 +50,11 @@
 	    database designated by the <command>-f</command> option) and
 	    displays a list of of all users logged in and logged out. The
 	    output can be restricted to different patterns via various
-	    options.
+	    options. If one or more usernames and/or ttys are given
+	    <command>wtmpdb last</command> will only show the entries matching
+	    those arguments.
 	  </para>
+
 	  <para>
 	    The login and logout times of the special user
 	    <command>reboot</command> are the boot and shutdown times of the

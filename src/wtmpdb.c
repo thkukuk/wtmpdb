@@ -76,6 +76,7 @@ static unsigned long currentry = 0; /* number of entries already printed */
 static time_t present = 0; /* Who was present at the specified time */
 static time_t since = 0; /* Who was logged in after this time? */
 static time_t until = 0; /* Who was logged in until this time? */
+static char **match = NULL; /* user/tty to display only */
 
 
 /* isipaddr - find out if string provided is an IP address or not
@@ -304,6 +305,20 @@ print_entry (void *unused __attribute__((__unused__)),
   if (present && (present < (time_t)(login_t/USEC_PER_SEC)))
     return 0;
 
+  if (match)
+    {
+      char **walk;
+
+      for (walk = match; *walk; walk++)
+	{
+	  if (strcmp (user, *walk) == 0 ||
+	      strcmp(tty, *walk) == 0)
+	    break;
+	}
+      if (*walk == NULL)
+	return 0;
+    }
+
   format_time (login_fmt, logintime, sizeof (logintime),
 	       login_t/USEC_PER_SEC);
 
@@ -473,6 +488,8 @@ usage (int retval)
   fputs ("  -t, --until TIME    Display who was logged in until TIME\n", output);
   fputs ("  -w, --fullnames     Display full IP addresses and user and domain names\n", output);
   fputs ("  -x, --system        Display system shutdown entries\n", output);
+  fputs ("  [username...]       Display only entries matching these arguments\n", output);
+  fputs ("  [tty...]            Display only entries matching these arguments\n", output);
   fputs ("TIME must be in the format \"YYYY-MM-DD HH:MM:SS\"\n", output);
   fputs ("\n", output);
 
@@ -649,10 +666,7 @@ main_last (int argc, char **argv)
     }
 
   if (argc > optind)
-    {
-      fprintf (stderr, "Unexpected argument: %s\n", argv[optind]);
-      usage (EXIT_FAILURE);
-    }
+    match = argv + optind;
 
   if (nohostname && hostlast)
     {
