@@ -1,3 +1,6 @@
+Version 0.10.0
+* last: support matching for username and/or tty
+
 Version 0.9.3
 * wtmpdb last: don't print date in the future if there is no db entry
 
