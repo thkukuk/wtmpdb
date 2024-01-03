@@ -161,13 +161,37 @@ static int
 time_format (const char *fmt)
 {
   if (strcmp (fmt, "notime") == 0)
-    return TIMEFMT_NOTIME;
+    {
+      login_fmt = TIMEFMT_NOTIME;
+      login_len = 0;
+      logout_fmt = TIMEFMT_NOTIME;
+      logout_len = 0;
+      return TIMEFMT_NOTIME;
+    }
   if (strcmp (fmt, "short") == 0)
-    return TIMEFMT_SHORT;
+    {
+      login_fmt = TIMEFMT_SHORT;
+      login_len = 16;
+      logout_fmt = TIMEFMT_HHMM;
+      logout_len = 5;
+      return TIMEFMT_SHORT;
+    }
   if (strcmp (fmt, "full") == 0)
-    return TIMEFMT_CTIME;
+   {
+     login_fmt = TIMEFMT_CTIME;
+     login_len = 24;
+     logout_fmt = TIMEFMT_CTIME;
+     logout_len = 24;
+     return TIMEFMT_CTIME;
+   }
   if (strcmp (fmt, "iso") == 0)
-    return TIMEFMT_ISO;
+   {
+     login_fmt = TIMEFMT_ISO;
+     login_len = 25;
+     logout_fmt = TIMEFMT_ISO;
+     logout_len = 25;
+     return TIMEFMT_ISO;
+   }
 
   return -1;
 }
