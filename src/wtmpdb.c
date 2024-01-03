@@ -48,9 +48,13 @@
 
 static char *wtmpdb_path = _PATH_WTMPDB;
 
-#define TIMEFMT_CTIME 1
-#define TIMEFMT_SHORT 2
-#define TIMEFMT_HHMM  3
+#define TIMEFMT_CTIME  1
+#define TIMEFMT_SHORT  2
+#define TIMEFMT_HHMM   3
+#define TIMEFMT_NOTIME 4
+#define TIMEFMT_ISO    5
+
+#define TIMEFMT_VALUE 255
 
 #define LOGROTATE_DAYS 60
 
@@ -153,6 +157,21 @@ parse_time (const char *str, time_t *arg)
   return 0;
 }
 
+static int
+time_format (const char *fmt)
+{
+  if (strcmp (fmt, "notime") == 0)
+    return TIMEFMT_NOTIME;
+  if (strcmp (fmt, "short") == 0)
+    return TIMEFMT_SHORT;
+  if (strcmp (fmt, "full") == 0)
+    return TIMEFMT_CTIME;
+  if (strcmp (fmt, "iso") == 0)
+    return TIMEFMT_ISO;
+
+  return -1;
+}
+
 static void
 format_time (int fmt, char *dst, size_t dstlen, uint64_t time)
 {
@@ -179,6 +198,16 @@ format_time (int fmt, char *dst, size_t dstlen, uint64_t time)
 	strftime (dst, dstlen, "%H:%M", tm);
 	break;
       }
+    case TIMEFMT_ISO:
+      {
+	time_t t = (time_t)time;
+	struct tm *tm = localtime (&t);
+	strftime (dst, dstlen, "%FT%T%z", tm); /* Same ISO8601 format original last command uses */
+	break;
+      }
+    case TIMEFMT_NOTIME:
+      *dst = '\0';
+      break;
     default:
       abort ();
     }
@@ -596,8 +625,10 @@ main_last (int argc, char **argv)
     {"since", required_argument, NULL, 's'},
     {"system", no_argument, NULL, 'x'},
     {"until", required_argument, NULL, 'u'},
+    {"time-format", required_argument, NULL, TIMEFMT_VALUE},
     {NULL, 0, NULL, '\0'}
   };
+  int time_fmt = TIMEFMT_CTIME;
   char *error = NULL;
   int c;
 
@@ -659,6 +690,14 @@ main_last (int argc, char **argv)
 	case 'x':
 	  xflag = 1;
 	  break;
+	case TIMEFMT_VALUE:
+	  time_fmt = time_format (optarg);
+	  if (time_fmt == -1)
+	    {
+	      fprintf (stderr, "Invalid time format '%s'\n", optarg);
+	      exit (EXIT_FAILURE);
+	    }
+	  break;
         default:
           usage (EXIT_FAILURE);
           break;
@@ -707,10 +746,10 @@ main_last (int argc, char **argv)
 
   if (wtmp_start == UINT64_MAX)
     printf ("%s has no entries\n", wtmpdb_path);
-  else
+  else if (time_fmt != TIMEFMT_NOTIME)
     {
       char wtmptime[32];
-      format_time (TIMEFMT_CTIME, wtmptime, sizeof (wtmptime),
+      format_time (time_fmt, wtmptime, sizeof (wtmptime),
 		   wtmp_start/USEC_PER_SEC);
       printf ("\n%s begins %s\n", wtmpdb_path, wtmptime);
     }
