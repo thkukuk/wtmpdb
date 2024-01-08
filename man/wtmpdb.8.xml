@@ -192,6 +192,27 @@
 		</para>
 	      </listitem>
 	    </varlistentry>
+	    <varlistentry>
+	      <term>
+		<option>--time-format</option>
+		<replaceable>FORMAT</replaceable>
+	      </term>
+	      <listitem>
+		<para>
+		  Display timestamps in the specified
+		  <replaceable>FORMAT</replaceable>. The format can be
+		  <replaceable>notime</replaceable>,
+		  <replaceable>short</replaceable>,
+		  <replaceable>full</replaceable>, or
+		  <replaceable>iso</replaceable>.
+		  <replaceable>notime</replaceable> will not display times at
+		  all, <replaceable>short</replaceable> is the default option,
+		  <replaceable>full</replaceable> will display the full times
+		  and dates, and <replaceable>iso</replaceable> will display
+		  times in ISO-8601 format.
+		</para>
+	      </listitem>
+	    </varlistentry>
 	  </variablelist>
 	  <para>
 	    <replaceable>TIME</replaceable> must be in the format

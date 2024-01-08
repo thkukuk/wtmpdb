@@ -541,6 +541,9 @@ usage (int retval)
   fputs ("  -t, --until TIME    Display who was logged in until TIME\n", output);
   fputs ("  -w, --fullnames     Display full IP addresses and user and domain names\n", output);
   fputs ("  -x, --system        Display system shutdown entries\n", output);
+  fputs ("      --time-format FORMAT  Display timestamps in the specified FORMAT:\n", output);
+  fputs ("                              notime|short|full|iso\n", output);
+
   fputs ("  [username...]       Display only entries matching these arguments\n", output);
   fputs ("  [tty...]            Display only entries matching these arguments\n", output);
   fputs ("TIME must be in the format \"YYYY-MM-DD HH:MM:SS\"\n", output);
