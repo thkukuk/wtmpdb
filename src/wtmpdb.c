@@ -45,6 +45,10 @@
 #include <libaudit.h>
 #endif
 
+#if HAVE_SYSTEMD
+#include <systemd/sd-bus.h>
+#endif
+
 #include "wtmpdb.h"
 
 static char *wtmpdb_path = _PATH_WTMPDB;
@@ -254,6 +258,20 @@ calc_time_length(char *dst, size_t dstlen, uint64_t start, uint64_t stop)
     snprintf (dst, dstlen, " (00:%02d)", mins);
 }
 
+/* map "soft-reboot" to "s-reboot" if we have only 8 characters
+   for user output (no -w specified) */
+static const char *
+map_soft_reboot (const char *user)
+{
+  if (wflag || strcmp (user, "soft-reboot") != 0)
+    return user;
+
+  if ((int)strlen (user) > name_len)
+    return "s-reboot";
+
+  return user;
+}
+
 static void
 print_line (const char *user, const char *tty, const char *host,
 	    const char *print_service,
@@ -265,7 +283,8 @@ print_line (const char *user, const char *tty, const char *host,
   if (nohostname)
     {
       if (asprintf (&line, "%-8.*s %-12.12s%s %-*.*s - %-*.*s %s\n",
-		    wflag?(int)strlen(user):name_len, user, tty, print_service,
+		    wflag?(int)strlen (user):name_len,
+		    map_soft_reboot (user), tty, print_service,
 		    login_len, login_len, logintime,
 		    logout_len, logout_len, logouttime,
 		    length) < 0)
@@ -279,7 +298,8 @@ print_line (const char *user, const char *tty, const char *host,
       if (hostlast)
 	{
 	  if (asprintf (&line, "%-8.*s %-12.12s%s %-*.*s - %-*.*s %-12.12s %s\n",
-			wflag?(int)strlen(user):name_len, user, tty, print_service,
+			wflag?(int)strlen(user):name_len, map_soft_reboot (user),
+			tty, print_service,
 			login_len, login_len, logintime,
 			logout_len, logout_len, logouttime,
 			length, host) < 0)
@@ -291,7 +311,7 @@ print_line (const char *user, const char *tty, const char *host,
       else
 	{
 	  if (asprintf (&line, "%-8.*s %-12.12s %-16.*s%s %-*.*s - %-*.*s %s\n",
-			wflag?(int)strlen(user):name_len, user, tty,
+			wflag?(int)strlen(user):name_len, map_soft_reboot (user), tty,
 			wflag?(int)strlen(host):host_len, host, print_service,
 			login_len, login_len, logintime,
 			logout_len, logout_len, logouttime,
@@ -816,6 +836,52 @@ diff_timespec(const struct timespec *time1, const struct timespec *time0)
   return diff;
 }
 
+#if HAVE_SYSTEMD
+/* Find out if it was a soft-reboot. With systemd v256 we can query systemd
+   for this.
+   Return values:
+   -1: no systemd support
+   0: no soft-reboot
+   >0: number of soft-reboots
+*/
+static int
+soft_reboots_count (void)
+{
+  unsigned soft_reboots_count = -1;
+  sd_bus *bus = NULL;
+  sd_bus_error error = SD_BUS_ERROR_NULL;
+  int r;
+
+  if (sd_bus_open_system (&bus) < 0)
+    {
+      fprintf (stderr, "Error: cannot open dbus");
+      return -1;
+    }
+
+  r = sd_bus_get_property_trivial (bus, "org.freedesktop.systemd1",
+				   "/org/freedesktop/systemd1",
+				   "org.freedesktop.systemd1.Manager",
+				   "SoftRebootsCount",
+				   &error, 'u', &soft_reboots_count);
+  sd_bus_unref (bus);
+  if (r < 0)
+    {
+      /* systemd is too old, don't print error */
+      if (!sd_bus_error_has_name (&error, SD_BUS_ERROR_UNKNOWN_PROPERTY))
+	{
+	  /* error occured, log it and return to fallback code */
+	  if (error.message)
+	    fprintf (stderr,
+		     "Failed to get SoftRebootsCount property: %s\n",
+		     error.message);
+	}
+      sd_bus_error_free (&error);
+      return -1;
+    }
+  return soft_reboots_count;
+}
+#endif
+
 static int
 main_boot (int argc, char **argv)
 {
@@ -827,6 +893,7 @@ main_boot (int argc, char **argv)
   char *error = NULL;
   int c;
   int quiet = 0;
+  int soft_reboot = 0;
 
   while ((c = getopt_long (argc, argv, "f:q", longopts, NULL)) != -1)
     {
@@ -855,13 +922,18 @@ main_boot (int argc, char **argv)
 
   struct timespec ts_now;
   struct timespec ts_boot;
-  struct timespec ts_empty = { .tv_sec = 0, .tv_nsec = 0 };
   clock_gettime (CLOCK_REALTIME, &ts_now);
   clock_gettime (CLOCK_BOOTTIME, &ts_boot);
   uint64_t time = wtmpdb_timespec2usec (diff_timespec(&ts_now, &ts_boot));
+#if HAVE_SYSTEMD
+  struct timespec ts_empty = { .tv_sec = 0, .tv_nsec = 0 };
   uint64_t now = wtmpdb_timespec2usec (diff_timespec(&ts_now, &ts_empty));
 
-  if ((now - time) > 300 * USEC_PER_SEC /* 5 minutes */)
+  int count = soft_reboots_count ();
+
+  if (count > 0)
+    soft_reboot = 1;
+  else if ((count < 0) && ((now - time) > 300 * USEC_PER_SEC) /* 5 minutes */)
     {
       if (!quiet)
 	{
@@ -875,13 +947,15 @@ main_boot (int argc, char **argv)
 	  printf ("Current time: %s\n", timebuf);
 	}
       time = now;
+      soft_reboot = 1;
     }
+#endif
 
 #if HAVE_AUDIT
   log_audit (AUDIT_SYSTEM_BOOT);
 #endif
 
-  if (wtmpdb_login (wtmpdb_path, BOOT_TIME, "reboot", time, "~", uts.release,
+  if (wtmpdb_login (wtmpdb_path, BOOT_TIME, soft_reboot ? "soft-reboot" : "reboot", time, "~", uts.release,
 		    NULL, &error) < 0)
     {
       if (error)

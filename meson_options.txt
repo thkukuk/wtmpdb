@@ -12,6 +12,9 @@ option('man', type : 'combo', choices : ['auto', 'true', 'false'],
 option('audit', type : 'combo', choices : ['auto', 'true', 'false'],
        value : 'auto',
        description : 'libaudit support')
+option('systemd', type : 'combo', choices : ['auto', 'true', 'false'],
+       value : 'auto',
+       description : 'systemd support to detect soft-reboots')
 option('compat-symlink', type : 'boolean',
        value : 'false',
        description : 'create last compat symlink')

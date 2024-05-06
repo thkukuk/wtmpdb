@@ -95,12 +95,22 @@ libsqlite3 = cc.find_library('sqlite3')
 want_audit = get_option('audit')
 if want_audit != 'false'
         libaudit = dependency('audit', required : want_audit == 'true')
-        have = libaudit.found()
+        have_audit = libaudit.found()
 else
-        have = false
+        have_audit = false
         libaudit = []
 endif
-conf.set10('HAVE_AUDIT', have)
+conf.set10('HAVE_AUDIT', have_audit)
+
+want_systemd = get_option('systemd')
+if want_systemd != 'false'
+        libsystemd = dependency('libsystemd', required : want_systemd == 'true')
+        have_systemd = libsystemd.found()
+else
+        have_systemd = false
+        libsystemd = []
+endif
+conf.set10('HAVE_SYSTEMD', have_systemd)
 
 libwtmpdb_c = files('lib/logwtmpdb.c', 'lib/sqlite.c')
 libwtmpdb_map = 'lib/libwtmpdb.map'
@@ -150,7 +160,7 @@ executable('wtmpdb',
            wtmpdb_c,
            include_directories : inc,
            link_with : libwtmpdb,
-           dependencies : [libaudit],
+           dependencies : [libaudit, libsystemd],
            install : true)
 
 if get_option('compat-symlink')
