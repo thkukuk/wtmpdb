@@ -932,7 +932,10 @@ main_boot (int argc, char **argv)
   int count = soft_reboots_count ();
 
   if (count > 0)
-    soft_reboot = 1;
+    {
+      time = now;
+      soft_reboot = 1;
+    }
   else if ((count < 0) && ((now - time) > 300 * USEC_PER_SEC) /* 5 minutes */)
     {
       if (!quiet)
