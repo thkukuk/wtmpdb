@@ -47,6 +47,7 @@
 
 #if HAVE_SYSTEMD
 #include <systemd/sd-bus.h>
+#define _cleanup_(f) __attribute__((cleanup(f)))
 #endif
 
 #include "wtmpdb.h"
@@ -848,7 +849,7 @@ static int
 soft_reboots_count (void)
 {
   unsigned soft_reboots_count = -1;
-  sd_bus *bus = NULL;
+  _cleanup_(sd_bus_flush_close_unrefp) sd_bus *bus = NULL;
   sd_bus_error error = SD_BUS_ERROR_NULL;
   int r;
 
@@ -863,7 +864,6 @@ soft_reboots_count (void)
 				   "org.freedesktop.systemd1.Manager",
 				   "SoftRebootsCount",
 				   &error, 'u', &soft_reboots_count);
-  sd_bus_unref (bus);
   if (r < 0)
     {
       /* systemd is too old, don't print error */
