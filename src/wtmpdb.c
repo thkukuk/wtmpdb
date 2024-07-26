@@ -362,8 +362,8 @@ print_entry (void *unused __attribute__((__unused__)),
   const char *host = argv[6]?argv[6]:"";
   const char *service = argv[7]?argv[7]:"";
 
-  uint64_t login_t = strtoul(argv[3], &endptr, 10);
-  if ((errno == ERANGE && login_t == UINT64_MAX)
+  uint64_t login_t = strtoull(argv[3], &endptr, 10);
+  if ((errno == ERANGE && login_t == ULLONG_MAX)
       || (endptr == argv[3]) || (*endptr != '\0'))
     fprintf (stderr, "Invalid numeric time entry for 'login': '%s'\n",
 	     argv[3]);
@@ -399,8 +399,8 @@ print_entry (void *unused __attribute__((__unused__)),
 
   if (argv[4])
     {
-      logout_t = strtoul(argv[4], &endptr, 10);
-      if ((errno == ERANGE && logout_t == INT64_MAX)
+      logout_t = strtoull(argv[4], &endptr, 10);
+      if ((errno == ERANGE && logout_t == ULLONG_MAX)
 	  || (endptr == argv[4]) || (*endptr != '\0'))
 	fprintf (stderr, "Invalid numeric time entry for 'logout': '%s'\n",
 		 argv[4]);
