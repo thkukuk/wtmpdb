@@ -5,7 +5,10 @@ DefaultDependencies=no
 RequiresMountsFor=/var/lib/wtmpdb
 Conflicts=shutdown.target
 After=systemd-remount-fs.service systemd-tmpfiles-setup.service
-Before=sysinit.target shutdown.target
+Before=shutdown.target
+# Ask for the dbus socket.
+Wants=dbus.socket
+After=dbus.socket
 
 [Service]
 Type=oneshot
