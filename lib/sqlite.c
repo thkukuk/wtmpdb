@@ -42,20 +42,50 @@
 
 /* Begin - local helper functions */
 
-static void
-mkdir_p(const char *pathname, mode_t mode)
+static int
+mkdir_p(const char *path, mode_t mode)
 {
-  if (mkdir(pathname, mode) == 0 || errno == EEXIST || errno != ENOENT)
-    return;
+  if (path == NULL)
+    return -EINVAL;
 
-  char *buf = strdup(pathname);
-  mkdir_p(dirname(buf), mode);
+  if (mkdir(path, mode) == 0)
+    return 0;
+
+  if (errno == EEXIST)
+    {
+      struct stat st;
+
+      /* Check if the existing path is a directory */
+      if (stat(path, &st) != 0)
+	return -errno;
+
+      /* If not, fail with ENOTDIR */
+      if (!S_ISDIR(st.st_mode))
+	return -ENOTDIR;
+
+      /* if it is a directory, return */
+      return 0;
+    }
+
+  /* If it fails for any reason but ENOENT, fail */
+  if (errno != ENOENT)
+    return -errno;
+
+  char *buf = strdup(path);
+  if (buf == NULL)
+    return -ENOMEM;
+
+  int r = mkdir_p(dirname(buf), mode);
   free(buf);
+  /* if we couldn't create the parent, fail, too */
+  if (r < 0)
+    return r;
 
-  mkdir(pathname, mode);
+  return mkdir(path, mode);
 }
 
-static void strip_extension(char *in_str)
+static void
+strip_extension(char *in_str)
 {
     static const int name_min_len = 1;
     static const int max_ext_len = 4;
