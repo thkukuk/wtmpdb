@@ -20,7 +20,7 @@ conf.set_quoted('PROJECT_VERSION', meson.project_version())
 
 cc = meson.get_compiler('c')
 pkg = import('pkgconfig')
-inc = include_directories('include')
+inc = include_directories(['include','lib'])
 
 add_project_arguments(['-D_GNU_SOURCE=1',
 		       '-DXTSTRINGDEFINES',
@@ -112,7 +112,7 @@ else
 endif
 conf.set10('HAVE_SYSTEMD', have_systemd)
 
-libwtmpdb_c = files('lib/logwtmpdb.c', 'lib/sqlite.c')
+libwtmpdb_c = files('lib/libwtmpdb.c', 'lib/logwtmpdb.c', 'lib/sqlite.c')
 libwtmpdb_map = 'lib/libwtmpdb.map'
 libwtmpdb_map_version = '-Wl,--version-script,@0@/@1@'.format(meson.current_source_dir(), libwtmpdb_map)
 
