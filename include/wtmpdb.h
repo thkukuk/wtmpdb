@@ -32,6 +32,10 @@
 
 #define _PATH_WTMPDB "/var/lib/wtmpdb/wtmp.db"
 
+#define _VARLINK_WTMPDB_SOCKET_DIR "/run/wtmpdb"
+#define _VARLINK_WTMPDB_SOCKET_WRITER _VARLINK_WTMPDB_SOCKET_DIR"/writer.socket"
+#define _VARLINK_WTMPDB_SOCKET_READER _VARLINK_WTMPDB_SOCKET_DIR"/reader.socket"
+
 #define EMPTY           0  /* No valid user accounting information.  */
 #define BOOT_TIME       1  /* Time of system boot.  */
 #define RUNLEVEL        2  /* The system's runlevel. Unused with systemd. */
@@ -54,7 +58,11 @@ extern int wtmpdb_read_all (const char *db_path,
 		            int (*cb_func) (void *unused, int argc,
 				            char **argv, char **azColName),
 			    char **error);
-extern int wtmpdb_rotate (const char *db_path, const int days, char **error, 
+extern int wtmpdb_read_all_v2 (const char *db_path,
+			       int (*cb_func) (void *unused, int argc,
+					       char **argv, char **azColName),
+			       void *userdata, char **error);
+extern int wtmpdb_rotate (const char *db_path, const int days, char **error,
 			  char **wtmpdb_name, uint64_t *entries);
 
 /* Returns last "BOOT_TIME" entry as usec */

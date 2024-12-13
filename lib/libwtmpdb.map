@@ -16,4 +16,7 @@ LIBWTMPDB_0.8 {
   global:
         wtmpdb_get_boottime;
 } LIBWTMPDB_0.7;
-
+LIBWTMPDB_0.50 {
+  global:
+	wtmpdb_read_all_v2;
+} LIBWTMPDB_0.8;

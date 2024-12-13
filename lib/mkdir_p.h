@@ -27,21 +27,7 @@
 
 #pragma once
 
-#include <stdint.h>
+#include <sys/stat.h>
 
-extern int64_t sqlite_login (const char *db_path, int type, const char *user,
-			     uint64_t usec_login, const char *tty,
-			     const char *rhost, const char *service,
-			     char **error);
-extern int sqlite_logout (const char *db_path, int64_t id,
-			  uint64_t usec_logout, char **error);
-extern int64_t sqlite_get_id (const char *db_path, const char *tty,
-			      char **error);
-extern int sqlite_read_all (const char *db_path,
-			    int (*cb_func)(void *unused, int argc, char **argv,
-					   char **azColName),
-			    void *userdata, char **error);
-extern uint64_t sqlite_get_boottime (const char *db_path, char **error);
-extern int sqlite_rotate (const char *db_path, const int days,
-			  char **wtmpdb_name, uint64_t *entries,
-			  char **error);
+extern int mkdir_p(const char *path, mode_t mode);
+

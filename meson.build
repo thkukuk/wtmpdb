@@ -12,11 +12,12 @@ project(
                   'b_lto=true',
 		  'warning_level=3',],
   license : ['BSD-2-Clause',],
-  version : '0.13.0',
+  version : '0.50.0',
 )
 
 conf = configuration_data()
-conf.set_quoted('PROJECT_VERSION', meson.project_version())
+conf.set_quoted('VERSION', meson.project_version())
+conf.set_quoted('PACKAGE', meson.project_name())
 
 cc = meson.get_compiler('c')
 pkg = import('pkgconfig')
@@ -112,7 +113,7 @@ else
 endif
 conf.set10('HAVE_SYSTEMD', have_systemd)
 
-libwtmpdb_c = files('lib/libwtmpdb.c', 'lib/logwtmpdb.c', 'lib/sqlite.c')
+libwtmpdb_c = files('lib/libwtmpdb.c', 'lib/logwtmpdb.c', 'lib/sqlite.c', 'lib/varlink.c', 'lib/mkdir_p.c')
 libwtmpdb_map = 'lib/libwtmpdb.map'
 libwtmpdb_map_version = '-Wl,--version-script,@0@/@1@'.format(meson.current_source_dir(), libwtmpdb_map)
 
@@ -127,7 +128,7 @@ libwtmpdb = shared_library(
   link_args : ['-shared',
                libwtmpdb_map_version],
   link_depends : libwtmpdb_map,
-  dependencies : [libsqlite3],
+  dependencies : [libsqlite3, libsystemd],
   install : true,
   version : meson.project_version(),
   soversion : '0'
@@ -155,6 +156,14 @@ pam_wtmpdb = shared_library(
 )
 
 wtmpdb_c = ['src/wtmpdb.c']
+wtmpdbd_c = ['src/wtmpdbd.c', 'src/varlink-org.openSUSE.wtmpdb.c', 'lib/mkdir_p.c']
+
+executable('wtmpdbd',
+           wtmpdbd_c,
+           include_directories : inc,
+           link_with : libwtmpdb,
+           dependencies : [libsystemd],
+           install : true)
 
 executable('wtmpdb',
            wtmpdb_c,

@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-2-Clause
 
-  Copyright (c) 2023, Thorsten Kukuk <kukuk@suse.com>
+  Copyright (c) 2023, 2024 Thorsten Kukuk <kukuk@suse.com>
 
   Redistribution and use in source and binary forms, with or without
   modification, are permitted provided that the following conditions are met:
@@ -38,52 +38,9 @@
 
 #include "wtmpdb.h"
 #include "sqlite.h"
+#include "mkdir_p.h"
 
 #define TIMEOUT 5000 /* 5 sec */
-
-/* Begin - local helper functions */
-
-static int
-mkdir_p(const char *path, mode_t mode)
-{
-  if (path == NULL)
-    return -EINVAL;
-
-  if (mkdir(path, mode) == 0)
-    return 0;
-
-  if (errno == EEXIST)
-    {
-      struct stat st;
-
-      /* Check if the existing path is a directory */
-      if (stat(path, &st) != 0)
-	return -errno;
-
-      /* If not, fail with ENOTDIR */
-      if (!S_ISDIR(st.st_mode))
-	return -ENOTDIR;
-
-      /* if it is a directory, return */
-      return 0;
-    }
-
-  /* If it fails for any reason but ENOENT, fail */
-  if (errno != ENOENT)
-    return -errno;
-
-  char *buf = strdup(path);
-  if (buf == NULL)
-    return -ENOMEM;
-
-  int r = mkdir_p(dirname(buf), mode);
-  free(buf);
-  /* if we couldn't create the parent, fail, too */
-  if (r < 0)
-    return r;
-
-  return mkdir(path, mode);
-}
 
 static void
 strip_extension(char *in_str)
@@ -101,9 +58,6 @@ strip_extension(char *in_str)
         }
     }
 }
-
-/* End - local helper functions */
-
 
 static sqlite3 *
 open_database_ro (const char *path, char **error)
@@ -392,37 +346,55 @@ search_id (sqlite3 *db, const char *tty, char **error)
 
   if (sqlite3_prepare_v2 (db, sql, -1, &res, 0) != SQLITE_OK)
     {
+      int r = -ENOTSUP;
       if (error)
         if (asprintf (error, "search_id: Failed to execute statement: %s",
                       sqlite3_errmsg (db)) < 0)
-          *error = strdup ("search_id: Out of memory");
-
-      return -1;
+	  {
+	    r = -ENOMEM;
+	    *error = strdup ("search_id: Out of memory");
+	  }
+      return r;
     }
 
   if (sqlite3_bind_text (res, 1, tty, -1, SQLITE_STATIC) != SQLITE_OK)
     {
+      int r = -EPROTO;
       if (error)
         if (asprintf (error, "search_id: Failed to create search query: %s",
                       sqlite3_errmsg (db)) < 0)
-          *error = strdup("search_id: Out of memory");
+	  {
+	    r = -ENOMEM;
+	    *error = strdup("search_id: Out of memory");
+	  }
 
       sqlite3_finalize(res);
-      return -1;
+      return r;
     }
 
   int step = sqlite3_step (res);
 
   if (step == SQLITE_ROW)
     id = sqlite3_column_int64 (res, 0);
+  else if (step == SQLITE_DONE)
+    {
+      id = -ENOENT;
+      if (error)
+        if (asprintf (error, "search_id: Open entry for tty '%s' not found", tty) < 0)
+	  {
+	    *error = strdup("search_id: Out of memory");
+	    id = -ENOMEM;
+	  }
+    }
   else
     {
+      id = -ENOENT;
       if (error)
-        if (asprintf (error, "search_id: TTY '%s' without logout time not found (%d)", tty, step) < 0)
-          *error = strdup("search_id: Out of memory");
-
-      sqlite3_finalize (res);
-      return -1;
+        if (asprintf (error, "search_id: sqlite3_step returned: %d", step) < 0)
+	  {
+	    *error = strdup("search_id: Out of memory");
+	    id = -ENOMEM;
+	  }
     }
 
   sqlite3_finalize (res);
@@ -453,7 +425,7 @@ int
 sqlite_read_all (const char *db_path,
 		 int (*cb_func)(void *unused, int argc, char **argv,
 				char **azColName),
-		 char **error)
+		 void *userdata, char **error)
 {
   sqlite3 *db;
   char *err_msg = 0;
@@ -463,7 +435,7 @@ sqlite_read_all (const char *db_path,
 
   char *sql = "SELECT * FROM wtmp ORDER BY Login DESC, Logout ASC";
 
-  if (sqlite3_exec (db, sql, cb_func, NULL, &err_msg) != SQLITE_OK)
+  if (sqlite3_exec (db, sql, cb_func, userdata, &err_msg) != SQLITE_OK)
     {
       if (error)
         if (asprintf (error, "sqlite_read_all: SQL error: %s", err_msg) < 0)
