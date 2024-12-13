@@ -18,3 +18,14 @@ tst_login_logout = executable ('tst-login-logout', 'tst-login-logout.c',
                         include_directories : inc,
                         link_with : libwtmpdb)
 test('tst-login-logout', tst_login_logout)
+
+tst_get_id = executable ('tst-get_id', 'tst-get_id.c',
+                        include_directories : inc,
+                        link_with : libwtmpdb)
+test('tst-get_id', tst_get_id)
+
+tst_varlink = executable ('tst-varlink', 'tst-varlink.c',
+                        include_directories : inc,
+                        link_with : libwtmpdb)
+test('tst-varlink', tst_varlink)
+

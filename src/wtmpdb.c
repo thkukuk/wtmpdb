@@ -1122,7 +1122,7 @@ main (int argc, char **argv)
 	  usage (EXIT_SUCCESS);
 	  break;
 	case 'v':
-	  printf ("wtmpdb %s\n", PROJECT_VERSION);
+	  printf ("wtmpdb %s\n", VERSION);
 	  break;
 	default:
 	  usage (EXIT_FAILURE);

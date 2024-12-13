@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-2-Clause
 
-  Copyright (c) 2024, Thorsten Kukuk <kukuk@suse.com>
+  Copyright (c) 2023, Thorsten Kukuk <kukuk@suse.com>
 
   Redistribution and use in source and binary forms, with or without
   modification, are permitted provided that the following conditions are met:
@@ -25,23 +25,34 @@
   POSSIBILITY OF SUCH DAMAGE.
 */
 
-#pragma once
+/* Test case:
+   Try to get the ID for an non-existing tty
+*/
 
-#include <stdint.h>
+#include <time.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
 
-extern int64_t sqlite_login (const char *db_path, int type, const char *user,
-			     uint64_t usec_login, const char *tty,
-			     const char *rhost, const char *service,
-			     char **error);
-extern int sqlite_logout (const char *db_path, int64_t id,
-			  uint64_t usec_logout, char **error);
-extern int64_t sqlite_get_id (const char *db_path, const char *tty,
-			      char **error);
-extern int sqlite_read_all (const char *db_path,
-			    int (*cb_func)(void *unused, int argc, char **argv,
-					   char **azColName),
-			    void *userdata, char **error);
-extern uint64_t sqlite_get_boottime (const char *db_path, char **error);
-extern int sqlite_rotate (const char *db_path, const int days,
-			  char **wtmpdb_name, uint64_t *entries,
-			  char **error);
+#include "wtmpdb.h"
+
+#include "basics.h"
+
+int
+main(void)
+{
+  _cleanup_(freep) char *error = NULL;
+  int64_t id = wtmpdb_get_id (NULL, "ttyXYZ-doesnotexist", &error);
+
+  if (id == -2)
+    {
+       printf ("wtmpdb_get_id returned expected: %li, '%s'\n",
+               id, error);
+       return 0;
+    }
+
+  fprintf (stderr, "wtmpdb_get_id returns '%ld' with error message: %s\n",
+	   id, error);
+  return 1;
+}

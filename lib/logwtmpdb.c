@@ -64,13 +64,13 @@ logwtmpdb (const char *db_path, const char *tty, const char *name,
 
   if (name != NULL && strlen (name) > 0)
     { /* login */
-      retval = wtmpdb_login (db_path ? db_path : _PATH_WTMPDB, USER_PROCESS,
-			     name, time, tty, host, service, error);
+      retval = wtmpdb_login (db_path, USER_PROCESS, name, time, tty,
+		      	     host, service, error);
     }
   else
     { /* logout */
-      int64_t id = wtmpdb_get_id (db_path ? db_path : _PATH_WTMPDB, tty, error);
-      retval = wtmpdb_logout (db_path ? db_path : _PATH_WTMPDB, id, time, error);
+      int64_t id = wtmpdb_get_id (db_path, tty, error);
+      retval = wtmpdb_logout (db_path, id, time, error);
     }
 
   return retval;
