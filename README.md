@@ -41,6 +41,16 @@ session optional pam_wtmpdb.so
 
 This line will create a new entry in the database for every user if an application calls the PAM framework.
 
+### OpenSSH
+
+OpenSSH does not provide the TTY to PAM modules, but the TTY value is important to identify the correct entry. For this reasons, an openssh version with wtmpdb is required (should be openssh >= 10.0) or the wtmpdb support needs to be backported.
+
+The PAM module (`pam_wtmpdb.so`) needs to be removed for the sshd service, or if it is configured in a "common" section, disabled:
+
+```
+session    optional        pam_wtmpdb.so   skip_if=sshd
+``` 
+
 ## Design
 
 ### Database
