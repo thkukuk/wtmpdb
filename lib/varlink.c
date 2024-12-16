@@ -27,7 +27,7 @@
 
 #include "config.h"
 
-#if HAVE_SYSTEMD
+#if WITH_WTMPDBD
 
 #include <stdlib.h>
 #include <stdbool.h>

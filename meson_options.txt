@@ -1,3 +1,6 @@
+option('wtmpdbd', type : 'combo', choices : ['auto', 'true', 'false'],
+       value : 'auto',
+       description : 'build daemon with sd-varlink support')
 option('split-usr', type : 'combo', choices : ['auto', 'true', 'false'],
        description : '''/bin, /sbin aren't symlinks into /usr''')
 option('rootprefix', type : 'string',

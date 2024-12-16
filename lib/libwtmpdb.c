@@ -25,6 +25,8 @@
   POSSIBILITY OF SUCH DAMAGE.
 */
 
+#include "config.h"
+
 #include <errno.h>
 #include <stddef.h>
 #include <stdlib.h>
@@ -32,9 +34,12 @@
 #include "basics.h"
 #include "wtmpdb.h"
 #include "sqlite.h"
+
+#if WITH_WTMPDBD
 #include "varlink.h"
 
 static int varlink_is_active = 1;
+#endif
 
 /*
   Add new wtmp entry to db.
@@ -46,6 +51,7 @@ wtmpdb_login (const char *db_path, int type, const char *user,
 	      uint64_t usec_login, const char *tty, const char *rhost,
 	      const char *service, char **error)
 {
+#if WITH_WTMPDBD
   /* we can use varlink only if no specific database is requested */
   if (varlink_is_active && db_path == NULL)
     {
@@ -64,7 +70,7 @@ wtmpdb_login (const char *db_path, int type, const char *user,
       else
 	return id; /* return the error if wtmpdbd is active */
     }
-
+#endif
   return sqlite_login (db_path?db_path:_PATH_WTMPDB, type, user,
 		       usec_login, tty, rhost, service, error);
 }
@@ -79,6 +85,7 @@ int
 wtmpdb_logout (const char *db_path, int64_t id, uint64_t usec_logout,
 	       char **error)
 {
+#if WITH_WTMPDBD
   /* we can use varlink only if no specific database is requested */
   if (varlink_is_active && db_path == NULL)
     {
@@ -96,6 +103,7 @@ wtmpdb_logout (const char *db_path, int64_t id, uint64_t usec_logout,
       else
 	return r; /* return the error if wtmpdbd is active */
     }
+#endif
 
   return sqlite_logout (db_path?db_path:_PATH_WTMPDB, id, usec_logout, error);
 }
@@ -103,6 +111,7 @@ wtmpdb_logout (const char *db_path, int64_t id, uint64_t usec_logout,
 int64_t
 wtmpdb_get_id (const char *db_path, const char *tty, char **error)
 {
+#if WITH_WTMPDBD
   /* we can use varlink only if no specific database is requested */
   if (varlink_is_active && db_path == NULL)
     {
@@ -120,6 +129,7 @@ wtmpdb_get_id (const char *db_path, const char *tty, char **error)
       else
 	return id; /* return the error if wtmpdbd is active */
     }
+#endif
 
   return sqlite_get_id (db_path?db_path:_PATH_WTMPDB, tty, error);
 }
@@ -153,6 +163,7 @@ int
 wtmpdb_rotate (const char *db_path, const int days, char **error,
 	       char **wtmpdb_name, uint64_t *entries)
 {
+#if WITH_WTMPDBD
   /* we can use varlink only if no specific database is requested */
   if (varlink_is_active && db_path == NULL)
     {
@@ -170,6 +181,7 @@ wtmpdb_rotate (const char *db_path, const int days, char **error,
       else
 	return r; /* return the error if wtmpdbd is active */
     }
+#endif
 
   return sqlite_rotate (db_path?db_path:_PATH_WTMPDB, days, wtmpdb_name, entries, error);
 }
@@ -178,6 +190,7 @@ wtmpdb_rotate (const char *db_path, const int days, char **error,
 uint64_t
 wtmpdb_get_boottime (const char *db_path, char **error)
 {
+#if WITH_WTMPDBD
   /* we can use varlink only if no specific database is requested */
   if (varlink_is_active && db_path == NULL)
     {
@@ -196,6 +209,7 @@ wtmpdb_get_boottime (const char *db_path, char **error)
       else
 	return 0; /* return the error if wtmpdbd is active */
     }
+#endif
 
   return sqlite_get_boottime (db_path?db_path:_PATH_WTMPDB, error);
 }

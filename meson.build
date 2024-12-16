@@ -10,8 +10,8 @@ project(
   		  'default_library=shared',
 		  'b_pie=true',
                   'b_lto=true',
-		  'warning_level=3',],
-  license : ['BSD-2-Clause',],
+		  'warning_level=2'],
+  license : ['BSD-2-Clause'],
   version : '0.50.0',
 )
 
@@ -103,13 +103,27 @@ else
 endif
 conf.set10('HAVE_AUDIT', have_audit)
 
-want_systemd = get_option('systemd')
-if want_systemd != 'false'
-        libsystemd = dependency('libsystemd', required : want_systemd == 'true')
-        have_systemd = libsystemd.found()
+want_wtmpdbd = get_option('wtmpdbd')
+if want_wtmpdbd != 'false'
+        libsystemd = dependency('libsystemd', version: '>= 257', required : want_wtmpdbd == 'true')
+        have_systemd257 = libsystemd.found()
 else
-        have_systemd = false
+        have_systemd257 = false
         libsystemd = []
+endif
+conf.set10('WITH_WTMPDBD', have_systemd257)
+
+want_systemd = get_option('systemd')
+if have_systemd257 == false
+  if want_systemd != 'false'
+          libsystemd = dependency('libsystemd', required : want_systemd == 'true')
+          have_systemd = libsystemd.found()
+  else
+          have_systemd = false
+          libsystemd = []
+  endif
+else
+    have_systemd = true
 endif
 conf.set10('HAVE_SYSTEMD', have_systemd)
 
@@ -158,12 +172,14 @@ pam_wtmpdb = shared_library(
 wtmpdb_c = ['src/wtmpdb.c']
 wtmpdbd_c = ['src/wtmpdbd.c', 'src/varlink-org.openSUSE.wtmpdb.c', 'lib/mkdir_p.c']
 
-executable('wtmpdbd',
-           wtmpdbd_c,
-           include_directories : inc,
-           link_with : libwtmpdb,
-           dependencies : [libsystemd],
-           install : true)
+if have_systemd257
+  executable('wtmpdbd',
+             wtmpdbd_c,
+             include_directories : inc,
+             link_with : libwtmpdb,
+             dependencies : [libsystemd],
+             install : true)
+endif
 
 executable('wtmpdb',
            wtmpdb_c,
