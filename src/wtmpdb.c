@@ -52,7 +52,7 @@
 
 #include "wtmpdb.h"
 
-static char *wtmpdb_path = _PATH_WTMPDB;
+static char *wtmpdb_path = NULL;
 
 #define TIMEFMT_CTIME  1
 #define TIMEFMT_SHORT  2
@@ -794,13 +794,13 @@ main_last (int argc, char **argv)
     }
 
   if (wtmp_start == UINT64_MAX)
-    printf ("%s has no entries\n", wtmpdb_path);
+    printf ("%s has no entries\n", wtmpdb_path?wtmpdb_path:"wtmpdb");
   else if (time_fmt != TIMEFMT_NOTIME)
     {
       char wtmptime[32];
       format_time (time_fmt, wtmptime, sizeof (wtmptime),
 		   wtmp_start/USEC_PER_SEC);
-      printf ("\n%s begins %s\n", wtmpdb_path, wtmptime);
+      printf ("\n%s begins %s\n", wtmpdb_path?wtmpdb_path:"wtmpdb", wtmptime);
     }
   return EXIT_SUCCESS;
 }
