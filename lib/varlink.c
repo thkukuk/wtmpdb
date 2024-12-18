@@ -488,4 +488,180 @@ varlink_rotate (const int days, char **backup_name, uint64_t *entries, char **er
   return 0;
 }
 
+struct read_all {
+  bool success;
+  char *error;
+  sd_json_variant *contents_json;
+};
+
+static void
+read_all_free (struct read_all *var)
+{
+  var->error = mfree(var->error);
+  var->contents_json = sd_json_variant_unref(var->contents_json);
+}
+
+struct wtmpdb_entry {
+  int64_t id;
+  int type;
+  char *user;
+  uint64_t login;
+  uint64_t logout;
+  char *tty;
+  char *remote_host;
+  char *service;
+};
+
+static void
+wtmpdb_entry_free (struct wtmpdb_entry *var)
+{
+  var->user = mfree(var->user);
+  var->tty = mfree(var->tty);
+  var->remote_host = mfree(var->remote_host);
+  var->service = mfree(var->service);
+}
+
+int
+varlink_read_all (int (*cb_func)(void *unused, int argc, char **argv,
+				 char **azColName),
+		  void *userdata, char **error)
+{
+  _cleanup_(read_all_free) struct read_all p = {
+    .success = false,
+    .error = NULL,
+    .contents_json = NULL,
+  };
+  static const sd_json_dispatch_field dispatch_table[] = {
+    { "Success",    SD_JSON_VARIANT_BOOLEAN, sd_json_dispatch_stdbool, offsetof(struct read_all, success), 0 },
+    { "ErrorMsg",   SD_JSON_VARIANT_STRING,  sd_json_dispatch_string,  offsetof(struct read_all, error), 0 },
+    { "Data",       SD_JSON_VARIANT_ARRAY,   sd_json_dispatch_variant, offsetof(struct read_all, contents_json), 0 },
+    {}
+  };
+  _cleanup_(sd_varlink_unrefp) sd_varlink *link = NULL;
+  sd_json_variant *result;
+  int r;
+
+  r = connect_to_wtmpdbd(&link, _VARLINK_WTMPDB_SOCKET_READER, error);
+  if (r < 0)
+    return r;
+
+  const char *error_id;
+  r = sd_varlink_call(link, "org.openSUSE.wtmpdb.ReadAll", NULL, &result, &error_id);
+  if (r < 0)
+    {
+      if (error)
+	if (asprintf (error, "Failed to call ReadAll method: %s",
+		      strerror(-r)) < 0)
+	  *error = strdup ("Out of memory");
+      return r;
+    }
+
+  /* dispatch before checking error_id, we may need the result for the error
+     message */
+  r = sd_json_dispatch(result, dispatch_table, SD_JSON_ALLOW_EXTENSIONS, &p);
+  if (r < 0)
+    {
+      if (error)
+	if (asprintf (error, "Failed to parse JSON answer: %s",
+		      strerror(-r)) < 0)
+	  *error = strdup("Out of memory");
+      return r;
+    }
+
+  if (error_id && strlen(error_id) > 0)
+    {
+      if (error)
+	{
+	  if (p.error)
+	    *error = strdup(p.error);
+	  else
+	    *error = strdup(error_id);
+	}
+      return -EIO;
+    }
+
+  if (!sd_json_variant_is_array(p.contents_json))
+    {
+      fprintf(stderr, "JSON 'Data' is no array!\n");
+      return -EINVAL;
+    }
+
+  for (size_t i = 0; i < sd_json_variant_elements(p.contents_json); i++)
+    {
+      static char *azColName[8] = {"ID", "Type", "User", "Login", "Logout", "TTY", "RemoteHost", "Service"};
+      _cleanup_(wtmpdb_entry_free) struct wtmpdb_entry e = {
+	.id = -1,
+	.type = -1,
+	.user = NULL,
+	.login = 0,
+	.logout = 0,
+	.tty = NULL,
+	.remote_host = NULL,
+	.service = NULL
+      };
+      static const sd_json_dispatch_field dispatch_entry_table[] = {
+	{ "ID",         SD_JSON_VARIANT_INTEGER, sd_json_dispatch_int64,  offsetof(struct wtmpdb_entry, id), SD_JSON_MANDATORY },
+	{ "Type",       SD_JSON_VARIANT_INTEGER, sd_json_dispatch_int,    offsetof(struct wtmpdb_entry, type), 0 },
+	{ "User",       SD_JSON_VARIANT_STRING,  sd_json_dispatch_string, offsetof(struct wtmpdb_entry, user), SD_JSON_MANDATORY },
+	{ "Login",      SD_JSON_VARIANT_INTEGER, sd_json_dispatch_uint64, offsetof(struct wtmpdb_entry, login), 0 },
+	{ "Logout",     SD_JSON_VARIANT_INTEGER, sd_json_dispatch_uint64, offsetof(struct wtmpdb_entry, logout), 0 },
+	{ "TTY",        SD_JSON_VARIANT_STRING,  sd_json_dispatch_string, offsetof(struct wtmpdb_entry, tty), 0 },
+	{ "RemoteHost", SD_JSON_VARIANT_STRING,  sd_json_dispatch_string, offsetof(struct wtmpdb_entry, remote_host), 0 },
+	{ "Service",    SD_JSON_VARIANT_STRING,  sd_json_dispatch_string, offsetof(struct wtmpdb_entry, service), 0 },
+	{}
+      };
+
+      sd_json_variant *entry = sd_json_variant_by_index(p.contents_json, i);
+      if (!sd_json_variant_is_object(entry))
+	{
+	  fprintf(stderr, "entry is no object!\n");
+	  return -EINVAL;
+	}
+
+      r = sd_json_dispatch(entry, dispatch_entry_table, SD_JSON_ALLOW_EXTENSIONS, &e);
+      if (r < 0)
+	{
+	  if (error)
+	    if (asprintf (error, "Failed to parse JSON wtmpdb entry: %s",
+			  strerror(-r)) < 0)
+	      *error = strdup("Out of memory");
+	  return r;
+	}
+
+      char *ret[8];
+      if (asprintf (&ret[0], "%li", e.id) < 0)
+	return -ENOMEM;
+      if (asprintf (&ret[1], "%i", e.type) < 0)
+	return -ENOMEM;
+      ret[2] = e.user;
+      if (asprintf (&ret[3], "%lu", e.login) < 0)
+	return -ENOMEM;
+      if (e.logout > 0)
+	{
+	  if (asprintf (&ret[4], "%lu", e.logout) < 0)
+	    return -ENOMEM;
+	}
+      else
+	ret[4] = NULL;
+      ret[5] = e.tty;
+      if (strlen(e.remote_host) > 0)
+	ret[6] = e.remote_host;
+      else
+	ret[6] = NULL;
+      if (strlen(e.service) > 0)
+	ret[7] = e.service;
+      else
+	ret[7] = NULL;
+
+      cb_func(userdata, 8, ret, azColName); /* XXX Don't ignore return value */
+
+      free(ret[0]);
+      free(ret[1]);
+      free(ret[3]);
+      free(ret[4]);
+    }
+
+  return 0;
+}
+
 #endif

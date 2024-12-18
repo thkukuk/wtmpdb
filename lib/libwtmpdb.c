@@ -143,6 +143,26 @@ wtmpdb_read_all (const char *db_path,
 				char **azColName),
 		 char **error)
 {
+#if WITH_WTMPDBD
+  /* we can use varlink only if no specific database is requested */
+  if (varlink_is_active && db_path == NULL)
+    {
+      int r;
+
+      r = varlink_read_all (cb_func, NULL, error);
+      if (r >= 0)
+	return r;
+
+      if (r == -ECONNREFUSED)
+	{
+	  varlink_is_active = 0;
+	  *error = mfree (*error);
+	}
+      else
+	return r; /* return the error if wtmpdbd is active */
+    }
+#endif
+
   return sqlite_read_all (db_path?db_path:_PATH_WTMPDB, cb_func, NULL, error);
 }
 
@@ -152,6 +172,26 @@ wtmpdb_read_all_v2 (const char *db_path,
 				   char **azColName),
 		    void *userdata, char **error)
 {
+#if WITH_WTMPDBD
+  /* we can use varlink only if no specific database is requested */
+  if (varlink_is_active && db_path == NULL)
+    {
+      int r;
+
+      r = varlink_read_all (cb_func, userdata, error);
+      if (r >= 0)
+	return r;
+
+      if (r == -ECONNREFUSED)
+	{
+	  varlink_is_active = 0;
+	  *error = mfree (*error);
+	}
+      else
+	return r; /* return the error if wtmpdbd is active */
+    }
+#endif
+
   return sqlite_read_all (db_path?db_path:_PATH_WTMPDB, cb_func, userdata, error);
 }
 

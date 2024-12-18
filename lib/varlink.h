@@ -37,7 +37,7 @@ extern int varlink_logout (int64_t id, uint64_t usec_logout, char **error);
 extern int64_t varlink_get_id (const char *tty, char **error);
 extern int varlink_read_all (int (*cb_func)(void *unused, int argc, char **argv,
 					    char **azColName),
-			     char **error);
+			     void *userdata, char **error);
 extern int varlink_get_boottime (uint64_t *boottime, char **error);
 extern int varlink_rotate (const int days, char **wtmpdb_name,
 			   uint64_t *entries, char **error);
