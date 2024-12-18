@@ -36,6 +36,7 @@
 
 static int verbose_flag = 0;
 static int debug_flag = 0;
+static int socket_activation = false;
 
 static void
 log_msg (int priority, const char *fmt, ...)
@@ -281,7 +282,7 @@ vl_method_get_boottime(sd_varlink *link, sd_json_variant *parameters,
 static int incomplete = 0;
 
 static int
-wtmpdb_cb_func (void *u, int argc, char **argv, char **azColName)
+wtmpdb_cb_func (void *u, int argc, char **argv, char _unused_(**azColName))
 {
   sd_json_variant **array = u;
   char *endptr;
@@ -290,6 +291,13 @@ wtmpdb_cb_func (void *u, int argc, char **argv, char **azColName)
 
   if (debug_flag)
     log_msg(LOG_DEBUG, "wtmpdb_cb_func called for ID %s", argv[0]);
+
+  if (argc != 8)
+    {
+      log_msg(LOG_ERR, "Invalid number of arguments: got %i, expected 8", argc);
+      incomplete = 1;
+      return 0;
+    }
 
   const int id = atoi (argv[0]);
   const int type = atoi (argv[1]);
@@ -367,7 +375,7 @@ vl_method_read_all(sd_varlink *link, sd_json_variant *parameters,
   r = wtmpdb_read_all_v2 (_PATH_WTMPDB, &wtmpdb_cb_func, (void *)&array, &error);
   if (r < 0 || error != NULL || incomplete)
     {
-      log_msg(LOG_ERR, "Get all entries from db failed: %s", error);
+      log_msg(LOG_ERR, "Didn't got all entries from db: %s", error);
       return sd_varlink_errorbo(link, "org.openSUSE.rebootmgr.InternalError",
 				SD_JSON_BUILD_PAIR_BOOLEAN("Success", false),
                                 SD_JSON_BUILD_PAIR_STRING("ErrorMsg", error?error:"unknown"));
@@ -542,7 +550,7 @@ init_varlink_server (sd_varlink_server **varlink_server, int flags)
       return r;
     }
 
-  r = sd_varlink_server_set_exit_on_idle (*varlink_server, false);
+  r = sd_varlink_server_set_exit_on_idle (*varlink_server, socket_activation);
   if (r < 0)
     return r;
 
@@ -630,6 +638,7 @@ print_help (void)
 {
   log_msg (LOG_INFO, "wtmpdbd - manage wtmpdb");
 
+  log_msg (LOG_INFO, "  -s,--socket    Activation through socket");
   log_msg (LOG_INFO, "  -d,--debug     Debug mode, no changes done");
   log_msg (LOG_INFO, "  -v,--verbose   Verbose logging");
   log_msg (LOG_INFO, "  -?, --help     Give this help list");
@@ -647,6 +656,7 @@ main (int argc, char **argv)
       int option_index = 0;
       static struct option long_options[] =
         {
+	  {"socket", no_argument, NULL, 's'},
           {"debug", no_argument, NULL, 'd'},
           {"verbose", no_argument, NULL, 'v'},
           {"version", no_argument, NULL, '\255'},
@@ -656,11 +666,14 @@ main (int argc, char **argv)
         };
 
 
-      c = getopt_long (argc, argv, "dvh?", long_options, &option_index);
+      c = getopt_long (argc, argv, "sdvh?", long_options, &option_index);
       if (c == (-1))
         break;
       switch (c)
         {
+	case 's':
+	  socket_activation = true;
+	  break;
         case 'd':
           debug_flag = 1;
 	  verbose_flag = 1;
