@@ -1,0 +1,7 @@
+[Unit]
+Description=wtmpdb daemon
+Documentation=man:wtmpdbd(8)
+
+[Service]
+Type=Notify
+ExecStart=/usr/libexec/wtmpdbd -s
