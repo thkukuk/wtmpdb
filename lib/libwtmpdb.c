@@ -77,7 +77,8 @@ wtmpdb_login (const char *db_path, int type, const char *user,
       if (VARLINK_IS_NOT_RUNNING(id))
 	{
 	  varlink_is_active = 0;
-	  *error = mfree (*error);
+	  if (error)
+	    *error = mfree (*error);
 	}
       else
 	return id; /* return the error if wtmpdbd is active */
@@ -109,7 +110,8 @@ wtmpdb_logout (const char *db_path, int64_t id, uint64_t usec_logout,
       if (VARLINK_IS_NOT_RUNNING(id))
 	{
 	  varlink_is_active = 0;
-	  *error = mfree (*error);
+	  if (error)
+	    *error = mfree (*error);
 	}
       else
 	return r; /* return the error if wtmpdbd is active */
@@ -134,7 +136,8 @@ wtmpdb_get_id (const char *db_path, const char *tty, char **error)
       if (VARLINK_IS_NOT_RUNNING(id))
 	{
 	  varlink_is_active = 0;
-	  *error = mfree (*error);
+	  if (error)
+	    *error = mfree (*error);
 	}
       else
 	return id; /* return the error if wtmpdbd is active */
@@ -165,7 +168,8 @@ wtmpdb_read_all (const char *db_path,
       if (VARLINK_IS_NOT_RUNNING(r))
 	{
 	  varlink_is_active = 0;
-	  *error = mfree (*error);
+	  if (error)
+	    *error = mfree (*error);
 	}
       else
 	return r; /* return the error if wtmpdbd is active */
@@ -193,7 +197,8 @@ wtmpdb_read_all_v2 (const char *db_path,
       if (VARLINK_IS_NOT_RUNNING(r))
 	{
 	  varlink_is_active = 0;
-	  *error = mfree (*error);
+	  if (error)
+	    *error = mfree (*error);
 	}
       else
 	return r; /* return the error if wtmpdbd is active */
@@ -223,7 +228,8 @@ wtmpdb_rotate (const char *db_path, const int days, char **error,
       if (VARLINK_IS_NOT_RUNNING(r))
 	{
 	  varlink_is_active = 0;
-	  *error = mfree (*error);
+	  if (error)
+	    *error = mfree (*error);
 	}
       else
 	return r; /* return the error if wtmpdbd is active */
@@ -250,7 +256,8 @@ wtmpdb_get_boottime (const char *db_path, char **error)
       if (VARLINK_IS_NOT_RUNNING(r))
 	{
 	  varlink_is_active = 0;
-	  *error = mfree (*error);
+	  if (error)
+	    *error = mfree (*error);
 	}
       else
 	return 0; /* return the error if wtmpdbd is active */
