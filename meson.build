@@ -87,6 +87,7 @@ endif
 if prefixdir != rootprefixdir and rootprefixdir != '/' and not prefixdir.strip('/').startswith(rootprefixdir.strip('/') + '/')
         error('Prefix is not below root prefix (now rootprefix=@0@ prefix=@1@)'.format(rootprefixdir, prefixdir))
 endif
+libexecdir = join_paths(prefixdir, get_option('libexecdir'))
 systemunitdir = prefixdir / 'lib/systemd/system'
 tmpfilesdir = prefixdir / 'lib/tmpfiles.d'
 
@@ -178,6 +179,7 @@ if have_systemd257
              include_directories : inc,
              link_with : libwtmpdb,
              dependencies : [libsystemd],
+             install_dir : libexecdir,
              install : true)
 endif
 
