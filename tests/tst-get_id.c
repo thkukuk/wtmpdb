@@ -45,6 +45,9 @@ main(void)
   _cleanup_(freep) char *error = NULL;
   int64_t id = wtmpdb_get_id (NULL, "ttyXYZ-doesnotexist", &error);
 
+  if (id == -14) /* SQLITE_CANTOPEN */
+       return 77;
+
   if (id == -2)
     {
        printf ("wtmpdb_get_id returned expected: %li, '%s'\n",
