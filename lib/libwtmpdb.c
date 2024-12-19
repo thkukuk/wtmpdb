@@ -237,12 +237,12 @@ wtmpdb_rotate (const char *db_path, const int days, char **error,
 uint64_t
 wtmpdb_get_boottime (const char *db_path, char **error)
 {
+  uint64_t boottime;
+  int r;
+
 #if WITH_WTMPDBD
   VARLINK_CHECKS
     {
-      int r;
-      uint64_t boottime;
-
       r = varlink_get_boottime (&boottime, error);
       if (r >= 0)
 	return boottime;
@@ -257,5 +257,10 @@ wtmpdb_get_boottime (const char *db_path, char **error)
     }
 #endif
 
-  return sqlite_get_boottime (db_path?db_path:_PATH_WTMPDB, error);
+  r = sqlite_get_boottime (db_path?db_path:_PATH_WTMPDB,
+			   &boottime, error);
+  if (r < 0)
+    return 0;
+  else
+    return boottime;
 }

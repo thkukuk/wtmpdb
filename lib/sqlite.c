@@ -59,24 +59,26 @@ strip_extension(char *in_str)
     }
 }
 
-static sqlite3 *
-open_database_ro (const char *path, char **error)
+static int
+open_database_ro (const char *path, sqlite3 **db, char **error)
 {
-  sqlite3 *db;
+  int r;
 
-  if (sqlite3_open_v2 (path, &db, SQLITE_OPEN_READONLY, NULL) != SQLITE_OK)
+  r = sqlite3_open_v2 (path, db, SQLITE_OPEN_READONLY, NULL);
+  if (r != SQLITE_OK)
     {
       if (error)
-	if (asprintf (error, "open_database_ro: Cannot open database (%s): %s",
-		      path, sqlite3_errmsg (db)) < 0)
-	  *error = strdup ("open_database_ro: Out of memory");
-      sqlite3_close (db);
-      return NULL;
+	if (asprintf(error, "open_database_ro: Cannot open database (%s): %s",
+		     path, sqlite3_errmsg(*db)) < 0)
+	  *error = strdup("open_database_ro: Out of memory");
+      sqlite3_close(*db);
+      *db = NULL;
+      return r;
     }
 
-  sqlite3_busy_timeout(db, TIMEOUT);
+  sqlite3_busy_timeout(*db, TIMEOUT);
 
-  return db;
+  return 0;
 }
 
 static sqlite3 *
@@ -407,9 +409,11 @@ sqlite_get_id (const char *db_path, const char *tty, char **error)
 {
   sqlite3 *db;
   int64_t retval;
+  int r;
 
-  if ((db = open_database_ro (db_path, error)) == NULL)
-    return -1;
+  r = open_database_ro (db_path, &db, error);
+  if (r != 0)
+    return -r;
 
   retval = search_id (db, tty, error);
 
@@ -429,24 +433,25 @@ sqlite_read_all (const char *db_path,
 {
   sqlite3 *db;
   char *err_msg = 0;
+  int r;
 
-  if ((db = open_database_ro (db_path, error)) == NULL)
-    return -1;
+  r = open_database_ro (db_path, &db, error);
+  if (r != 0)
+    return -r;
 
   char *sql = "SELECT * FROM wtmp ORDER BY Login DESC, Logout ASC";
 
-  if (sqlite3_exec (db, sql, cb_func, userdata, &err_msg) != SQLITE_OK)
+  r = sqlite3_exec (db, sql, cb_func, userdata, &err_msg);
+  sqlite3_close (db);
+  if (r != SQLITE_OK)
     {
       if (error)
         if (asprintf (error, "sqlite_read_all: SQL error: %s", err_msg) < 0)
           *error = strdup ("sqlite_read_all: Out of memory");
 
       sqlite3_free (err_msg);
-      sqlite3_close (db);
-      return -1;
+      return -r;
     }
-
-  sqlite3_close (db);
 
   return 0;
 }
@@ -692,18 +697,20 @@ search_boottime (sqlite3 *db, char **error)
   return boottime;
 }
 
-uint64_t
-sqlite_get_boottime (const char *db_path, char **error)
+int
+sqlite_get_boottime (const char *db_path,
+		     uint64_t *boottime, char **error)
 {
   sqlite3 *db;
-  uint64_t retval;
+  int r;
 
-  if ((db = open_database_ro (db_path, error)) == NULL)
-    return 0;
+  r = open_database_ro (db_path, &db, error);
+  if (r != 0)
+    return -r;
 
-  retval = search_boottime (db, error);
+  *boottime = search_boottime (db, error);
 
   sqlite3_close (db);
 
-  return retval;
+  return 0;
 }

@@ -41,7 +41,8 @@ extern int sqlite_read_all (const char *db_path,
 			    int (*cb_func)(void *unused, int argc, char **argv,
 					   char **azColName),
 			    void *userdata, char **error);
-extern uint64_t sqlite_get_boottime (const char *db_path, char **error);
+extern int sqlite_get_boottime(const char *db_path, uint64_t *boottime,
+			       char **error);
 extern int sqlite_rotate (const char *db_path, const int days,
 			  char **wtmpdb_name, uint64_t *entries,
 			  char **error);
