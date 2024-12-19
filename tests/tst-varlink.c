@@ -30,6 +30,7 @@
 */
 
 #include <time.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -62,9 +63,12 @@ main(void)
   clock_gettime (CLOCK_REALTIME, &ts);
   login_t = wtmpdb_timespec2usec (ts);
 
-  if ((id = wtmpdb_login (NULL, USER_PROCESS, user,
+  if ((id = wtmpdb_login ("varlink", USER_PROCESS, user,
 			  login_t, tty, rhost, service, &error)) < 0)
     {
+      if (id == -ECONNREFUSED || id == -ENOENT)
+	return 77;
+
       if (error)
         {
           fprintf (stderr, "wtmpdb_login: %s\n", error);
@@ -78,7 +82,7 @@ main(void)
 
   /* wtmpdb_get_id should return the same ID as wtmpdb_login */
   int64_t newid;
-  if ((newid = wtmpdb_get_id (NULL, tty, &error)) < 0)
+  if ((newid = wtmpdb_get_id ("varlink", tty, &error)) < 0)
     {
       if (error)
         {
@@ -100,7 +104,7 @@ main(void)
   clock_gettime (CLOCK_REALTIME, &ts);
   logout_t = wtmpdb_timespec2usec (ts);
 
-  if (wtmpdb_logout (NULL, id, logout_t, &error) != 0)
+  if (wtmpdb_logout ("varlink", id, logout_t, &error) != 0)
     {
       if (error)
         {
@@ -112,7 +116,7 @@ main(void)
       return 1;
     }
 
-  uint64_t boottime = wtmpdb_get_boottime (NULL, &error);
+  uint64_t boottime = wtmpdb_get_boottime ("varlink", &error);
   if (boottime == 0 || error != NULL)
     {
       if (error)
@@ -134,7 +138,7 @@ main(void)
 
   _cleanup_(freep) char *backup = NULL;
   uint64_t entries = 0;
-  if (wtmpdb_rotate (NULL, 30, &error, &backup, &entries) < 0)
+  if (wtmpdb_rotate ("varlink", 30, &error, &backup, &entries) < 0)
     {
       if (error)
         {
@@ -145,6 +149,8 @@ main(void)
 	fprintf (stderr, "wtmpdb_rotate failed\n");
       return 1;
     }
+  else if (entries == 0)
+    printf ("Nothing to move for wtmpdb_rotate\n");
   else
     printf ("wtmpdb_rotate moved %lu entries into %s\n", entries, backup);
 

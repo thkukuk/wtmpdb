@@ -28,6 +28,7 @@
 #include "config.h"
 
 #include <errno.h>
+#include <string.h>
 #include <stddef.h>
 #include <stdlib.h>
 
@@ -39,6 +40,18 @@
 #include "varlink.h"
 
 static int varlink_is_active = 1;
+static int varlink_is_enforced = 0;
+
+#define VARLINK_CHECKS \
+   if (varlink_is_enforced == 0 && db_path != NULL && \
+      strcmp (db_path, "varlink") == 0) \
+    varlink_is_enforced = 1; \
+\
+  /* we can use varlink only if no specific database is requested */ \
+  if (varlink_is_enforced || (varlink_is_active && db_path == NULL))
+
+#define VARLINK_IS_NOT_RUNNING(r) (r == -ECONNREFUSED || r == -ENOENT)
+
 #endif
 
 /*
@@ -52,17 +65,16 @@ wtmpdb_login (const char *db_path, int type, const char *user,
 	      const char *service, char **error)
 {
 #if WITH_WTMPDBD
-  /* we can use varlink only if no specific database is requested */
-  if (varlink_is_active && db_path == NULL)
+  VARLINK_CHECKS
     {
       int64_t id;
 
       id = varlink_login (type, user, usec_login, tty, rhost,
 			  service, error);
-      if (id >= 0)
+      if (id >= 0 || varlink_is_enforced)
 	return id;
 
-      if (id == -ECONNREFUSED)
+      if (VARLINK_IS_NOT_RUNNING(id))
 	{
 	  varlink_is_active = 0;
 	  *error = mfree (*error);
@@ -86,8 +98,7 @@ wtmpdb_logout (const char *db_path, int64_t id, uint64_t usec_logout,
 	       char **error)
 {
 #if WITH_WTMPDBD
-  /* we can use varlink only if no specific database is requested */
-  if (varlink_is_active && db_path == NULL)
+  VARLINK_CHECKS
     {
       int r;
 
@@ -95,7 +106,7 @@ wtmpdb_logout (const char *db_path, int64_t id, uint64_t usec_logout,
       if (r >= 0)
 	return r;
 
-      if (id == -ECONNREFUSED)
+      if (VARLINK_IS_NOT_RUNNING(id))
 	{
 	  varlink_is_active = 0;
 	  *error = mfree (*error);
@@ -112,8 +123,7 @@ int64_t
 wtmpdb_get_id (const char *db_path, const char *tty, char **error)
 {
 #if WITH_WTMPDBD
-  /* we can use varlink only if no specific database is requested */
-  if (varlink_is_active && db_path == NULL)
+  VARLINK_CHECKS
     {
       int64_t id;
 
@@ -121,7 +131,7 @@ wtmpdb_get_id (const char *db_path, const char *tty, char **error)
       if (id >= 0)
 	return id;
 
-      if (id == -ECONNREFUSED)
+      if (VARLINK_IS_NOT_RUNNING(id))
 	{
 	  varlink_is_active = 0;
 	  *error = mfree (*error);
@@ -144,8 +154,7 @@ wtmpdb_read_all (const char *db_path,
 		 char **error)
 {
 #if WITH_WTMPDBD
-  /* we can use varlink only if no specific database is requested */
-  if (varlink_is_active && db_path == NULL)
+  VARLINK_CHECKS
     {
       int r;
 
@@ -153,7 +162,7 @@ wtmpdb_read_all (const char *db_path,
       if (r >= 0)
 	return r;
 
-      if (r == -ECONNREFUSED)
+      if (VARLINK_IS_NOT_RUNNING(r))
 	{
 	  varlink_is_active = 0;
 	  *error = mfree (*error);
@@ -173,8 +182,7 @@ wtmpdb_read_all_v2 (const char *db_path,
 		    void *userdata, char **error)
 {
 #if WITH_WTMPDBD
-  /* we can use varlink only if no specific database is requested */
-  if (varlink_is_active && db_path == NULL)
+  VARLINK_CHECKS
     {
       int r;
 
@@ -182,7 +190,7 @@ wtmpdb_read_all_v2 (const char *db_path,
       if (r >= 0)
 	return r;
 
-      if (r == -ECONNREFUSED)
+      if (VARLINK_IS_NOT_RUNNING(r))
 	{
 	  varlink_is_active = 0;
 	  *error = mfree (*error);
@@ -204,8 +212,7 @@ wtmpdb_rotate (const char *db_path, const int days, char **error,
 	       char **wtmpdb_name, uint64_t *entries)
 {
 #if WITH_WTMPDBD
-  /* we can use varlink only if no specific database is requested */
-  if (varlink_is_active && db_path == NULL)
+  VARLINK_CHECKS
     {
       int r;
 
@@ -213,7 +220,7 @@ wtmpdb_rotate (const char *db_path, const int days, char **error,
       if (r >= 0)
 	return r;
 
-      if (r == -ECONNREFUSED)
+      if (VARLINK_IS_NOT_RUNNING(r))
 	{
 	  varlink_is_active = 0;
 	  *error = mfree (*error);
@@ -231,8 +238,7 @@ uint64_t
 wtmpdb_get_boottime (const char *db_path, char **error)
 {
 #if WITH_WTMPDBD
-  /* we can use varlink only if no specific database is requested */
-  if (varlink_is_active && db_path == NULL)
+  VARLINK_CHECKS
     {
       int r;
       uint64_t boottime;
@@ -241,7 +247,7 @@ wtmpdb_get_boottime (const char *db_path, char **error)
       if (r >= 0)
 	return boottime;
 
-      if (r == -ECONNREFUSED)
+      if (VARLINK_IS_NOT_RUNNING(r))
 	{
 	  varlink_is_active = 0;
 	  *error = mfree (*error);
