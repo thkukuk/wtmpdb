@@ -489,6 +489,47 @@ announce_ready (void)
 
 
 static int
+varlink_server_listen_name(sd_varlink_server *s, const char *fdname) {
+  char **names = NULL;
+  int r, n = 0;
+
+        /* Adds all passed fds marked as "varlink" to our varlink server. These fds can either refer to a
+         * listening socket or to a connection socket.
+         *
+         * See https://varlink.org/#activation for the environment variables this is backed by and the
+         * recommended "varlink" identifier in $LISTEN_FDNAMES. */
+
+        r = sd_listen_fds_with_names(/* unset_environment= */ false, &names);
+        if (r < 0)
+                return r;
+
+        for (int i = 0; i < r; i++) {
+                int b, fd;
+                socklen_t l = sizeof(b);
+
+                if (strcmp(names[i], fdname) != 0)
+                        continue;
+
+                fd = SD_LISTEN_FDS_START + i;
+
+                if (getsockopt(fd, SOL_SOCKET, SO_ACCEPTCONN, &b, &l) < 0)
+                        return -errno;
+
+                if (b) /* Listening socket? */
+                        r = sd_varlink_server_listen_fd(s, fd);
+                else /* Otherwise assume connection socket */
+                        r = sd_varlink_server_add_connection(s, fd, NULL);
+                if (r < 0)
+                        return r;
+
+                n++;
+        }
+
+        return n;
+}
+
+
+static int
 varlink_server_loop (sd_varlink_server *reader, sd_varlink_server *writer)
 {
   _cleanup_(sd_event_unrefp) sd_event *event = NULL;
@@ -496,25 +537,46 @@ varlink_server_loop (sd_varlink_server *reader, sd_varlink_server *writer)
 
   r = sd_event_new (&event);
   if (r < 0)
-    return r;
+    {
+      log_msg (LOG_ERR, "Failed to create new event: %s",
+	       strerror (-r));
+      return r;
+    }
 
   sd_varlink_server_set_userdata (reader, event);
   sd_varlink_server_set_userdata (writer, event);
 
   r = sd_varlink_server_attach_event (reader, event, 0);
   if (r < 0)
-    return r;
+    {
+      log_msg (LOG_ERR, "Failed to attach varlink reader to event: %s",
+	       strerror (-r));
+      return r;
+    }
 
   r = sd_varlink_server_attach_event (writer, event, 0);
   if (r < 0)
-    return r;
+    {
+      log_msg (LOG_ERR, "Failed to attach varlink writer to event: %s",
+	       strerror (-r));
+      return r;
+    }
 
-  r = sd_varlink_server_listen_auto (reader);
+  r = varlink_server_listen_name (reader, "varlink-reader");
   if (r < 0)
-    return r;
-  r = sd_varlink_server_listen_auto (writer);
+    {
+      log_msg (LOG_ERR, "Failed to listen to varlink reader events: %s",
+	       strerror (-r));
+      return r;
+    }
+
+  r = varlink_server_listen_name (writer, "varlink-writer");
   if (r < 0)
-    return r;
+    {
+      log_msg (LOG_ERR, "Failed to listen to varlink writer events: %s",
+	       strerror (-r));
+      return r;
+    }
 
   announce_ready();
 
@@ -623,12 +685,7 @@ run_varlink (void)
     }
 
   r = varlink_server_loop (varlink_reader, varlink_writer);
-  if (r < 0)
-    {
-      log_msg (LOG_ERR, "Failed to run Varlink event loop: %s",
-	       strerror (-r));
-      return r;
-    }
+  return r;
 
   return 0;
 }

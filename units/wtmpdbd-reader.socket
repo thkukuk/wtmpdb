@@ -4,8 +4,8 @@ Documentation=man:wtmpdbd(8)
 
 [Socket]
 ListenStream=/run/wtmpdb/reader.socket
-Service=wtmpdb.service
-FileDescriptorName=varlink
+Service=wtmpdbd.service
+FileDescriptorName=varlink-reader
 SocketMode=0666
 DirectoryMode=0755
 

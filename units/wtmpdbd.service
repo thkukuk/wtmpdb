@@ -3,5 +3,5 @@ Description=wtmpdb daemon
 Documentation=man:wtmpdbd(8)
 
 [Service]
-Type=Notify
+Type=notify
 ExecStart=/usr/libexec/wtmpdbd -s

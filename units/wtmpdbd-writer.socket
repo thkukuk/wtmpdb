@@ -5,7 +5,7 @@ Documentation=man:wtmpdbd(8)
 [Socket]
 ListenStream=/run/wtmpdb/writer.socket
 Service=wtmpdbd.service
-FileDescriptorName=varlink
+FileDescriptorName=varlink-writer
 SocketMode=0600
 DirectoryMode=0755
 
