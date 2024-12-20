@@ -25,6 +25,8 @@
   POSSIBILITY OF SUCH DAMAGE.
 */
 
+#include "config.h"
+
 #include <errno.h>
 #include <time.h>
 #include <stdio.h>
@@ -81,29 +83,38 @@ open_database_ro (const char *path, sqlite3 **db, char **error)
   return 0;
 }
 
-static sqlite3 *
-open_database_rw (const char *path, char **error)
+static int
+open_database_rw (const char *path, sqlite3 **db, char **error)
 {
-  sqlite3 *db;
+  int r;
 
   char *buf = strdup(path);
-  mkdir_p(dirname(buf), 0644);
+  mkdir_p(dirname(buf), 0755);
   free(buf);
 
-  if (sqlite3_open (path, &db) != SQLITE_OK)
+#if WITH_WTMPDBD
+  mode_t old_umask = umask(0077);
+#endif
+
+  r = sqlite3_open (path, db);
+#if WITH_WTMPDBD
+  umask (old_umask);
+#endif
+  if (r != SQLITE_OK)
     {
       if (error)
 	if (asprintf (error, "open_database_rw: Cannot create/open database (%s): %s",
-		      path, sqlite3_errmsg (db)) < 0)
+		      path, sqlite3_errmsg (*db)) < 0)
 	  *error = strdup ("open_database_rw: Out of memory");
 
-      sqlite3_close (db);
-      return NULL;
+      sqlite3_close (*db);
+      *db = NULL;
+      return -r;
     }
 
-  sqlite3_busy_timeout(db, TIMEOUT);
+  sqlite3_busy_timeout(*db, TIMEOUT);
 
-  return db;
+  return 0;
 }
 
 /* Add a new entry. Returns ID (>=0) on success, -1 on failure. */
@@ -224,29 +235,31 @@ add_entry (sqlite3 *db, int type, const char *user,
 /*
   Add new wtmp entry to db.
   login timestamp is in usec.
-  Returns 0 on success, -1 on failure.
+  Returns ID on success, < 0 on failure.
  */
 int64_t
-sqlite_login (const char *db_path, int type, const char *user,
-	      uint64_t usec_login, const char *tty, const char *rhost,
-	      const char *service, char **error)
+sqlite_login(const char *db_path, int type, const char *user,
+	     uint64_t usec_login, const char *tty, const char *rhost,
+	     const char *service, char **error)
 {
   sqlite3 *db;
-  int64_t retval;
+  int64_t id;
+  int r;
 
-  if ((db = open_database_rw (db_path, error)) == NULL)
-    return -1;
+  r = open_database_rw(db_path, &db, error);
+  if (r < 0)
+    return r;
 
-  retval = add_entry (db, type, user, usec_login, tty, rhost, service, error);
+  id = add_entry(db, type, user, usec_login, tty, rhost, service, error);
 
-  sqlite3_close (db);
+  sqlite3_close(db);
 
-  return retval;
+  return id;
 }
 
 /* Updates logout field.
    logout timestamp is in usec.
-   Returns 0 on success, -1 on failure. */
+   Returns 0 on success, < 0 on failure. */
 static int
 update_logout (sqlite3 *db, int64_t id, uint64_t usec_logout, char **error)
 {
@@ -320,23 +333,24 @@ update_logout (sqlite3 *db, int64_t id, uint64_t usec_logout, char **error)
   Add logout timestamp to existingentry.
   logout timestamp is in usec.
   ID is the return value of wtmpdb_login/logwtmpdb.
-  Returns 0 on success, -1 on failure.
+  Returns 0 on success, < 0 on failure.
  */
 int
 sqlite_logout (const char *db_path, int64_t id, uint64_t usec_logout,
 	       char **error)
 {
   sqlite3 *db;
-  int retval;
+  int r;
 
-  if ((db = open_database_rw (db_path, error)) == NULL)
-    return -1;
+  r = open_database_rw (db_path, &db, error);
+  if (r < 0)
+    return r;
 
-  retval = update_logout (db, id, usec_logout, error);
+  r = update_logout(db, id, usec_logout, error);
 
   sqlite3_close (db);
 
-  return retval;
+  return r;
 }
 
 static int64_t
@@ -504,10 +518,10 @@ export_row (sqlite3 *db_dest, sqlite3_stmt *sqlStatement, char **error)
 
 /* Reads all entries from database and calls the callback function for
    each entry.
-   Returns 0 on success, -1 on failure. */
+   Returns 0 on success, <0 on failure. */
 int
-sqlite_rotate (const char *db_path, const int days, char **wtmpdb_name,
-	       uint64_t *entries, char **error)
+sqlite_rotate(const char *db_path, const int days, char **wtmpdb_name,
+	      uint64_t *entries, char **error)
 {
   sqlite3 *db_src;
   sqlite3 *db_dest;
@@ -521,26 +535,31 @@ sqlite_rotate (const char *db_path, const int days, char **wtmpdb_name,
   strftime (date, 10, "%Y%m%d", tm);
   char *dest_path = NULL;
   char *dest_file = strdup(db_path);
+  int r;
+
   strip_extension(dest_file);
 
   if (asprintf (&dest_path, "%s/%s_%s.db", dirname(dest_file), basename(dest_file), date) < 0)
     {
       *error = strdup ("sqlite_rotate: Out of memory");
-      return -1;
+      return -ENOMEM;
     }
-  if ((db_dest = open_database_rw (dest_path, error)) == NULL)
+
+  r = open_database_rw(dest_path, &db_dest, error);
+  if (r < 0)
     {
       free(dest_path);
       free(dest_file);
-      return -1;
+      return r;
     }
 
-  if ((db_src = open_database_rw (db_path, error)) == NULL)
+  r = open_database_rw (db_path, &db_src, error);
+  if (r < 0)
     {
       free(dest_path);
       free(dest_file);
       sqlite3_close (db_dest);
-      return -1;
+      return r;
     }
 
   char *sql_select = "SELECT * FROM wtmp where Login <= ?";
