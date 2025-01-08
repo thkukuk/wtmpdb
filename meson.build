@@ -125,6 +125,12 @@ if have_systemd257 == false
   endif
 else
     have_systemd = true
+    # check if we have functions from 258 already
+    if cc.has_function('sd_varlink_server_listen_name',
+                       prefix: '#include <systemd/sd-varlink.h>',
+		       dependencies: [libsystemd])
+      conf.set('HAVE_SD_VARLINK_SERVER_LISTEN_NAME', 1)
+    endif
 endif
 conf.set10('HAVE_SYSTEMD', have_systemd)
 

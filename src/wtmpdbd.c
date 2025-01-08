@@ -488,8 +488,9 @@ announce_ready (void)
 }
 
 
-/* clone of sd_varlink_server_listen_auto, just that the socket name "varlink"
-   is configureable */
+#if !HAVE_SD_VARLINK_SERVER_LISTEN_NAME
+/* clone of sd_varlink_server_listen_name in the case we have systemd
+   v257 and not v258. */
 static char **
 strv_free(char **v)
 {
@@ -505,12 +506,13 @@ strv_free(char **v)
 
 static inline void strv_freep(char ***p) { strv_free(*p); }
 
-static int
-varlink_server_listen_name(sd_varlink_server *s, const char *fdname) {
+int
+sd_varlink_server_listen_name(sd_varlink_server *s, const char *name)
+{
   _cleanup_(strv_freep) char **names = NULL;
   int r, n = 0;
 
-  /* Adds all passed fds marked as "varlink" to our varlink server. These fds can either refer to a
+  /* Adds all passed fds marked as "name" to our varlink server. These fds can either refer to a
    * listening socket or to a connection socket.
    *
    * See https://varlink.org/#activation for the environment variables this is backed by and the
@@ -524,7 +526,7 @@ varlink_server_listen_name(sd_varlink_server *s, const char *fdname) {
     int b, fd;
     socklen_t l = sizeof(b);
 
-    if (strcmp(names[i], fdname) != 0)
+    if (strcmp(names[i], name) != 0)
       continue;
 
     fd = SD_LISTEN_FDS_START + i;
@@ -544,6 +546,7 @@ varlink_server_listen_name(sd_varlink_server *s, const char *fdname) {
 
   return n;
 }
+#endif
 
 static int
 init_varlink_server(sd_varlink_server **varlink_server, int flags,
@@ -593,7 +596,7 @@ init_varlink_server(sd_varlink_server **varlink_server, int flags,
       return r;
     }
 
-  r = varlink_server_listen_name (*varlink_server, name);
+  r = sd_varlink_server_listen_name (*varlink_server, name);
   if (r < 0)
     {
       log_msg (LOG_ERR, "Failed to listen to %s events: %s",
