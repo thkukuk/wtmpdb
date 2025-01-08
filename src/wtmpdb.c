@@ -892,8 +892,10 @@ main_boot (int argc, char **argv)
   };
   char *error = NULL;
   int c;
-  int quiet = 0;
   int soft_reboot = 0;
+#if HAVE_SYSTEMD
+  int quiet = 0;
+#endif
 
   while ((c = getopt_long (argc, argv, "f:q", longopts, NULL)) != -1)
     {
@@ -903,7 +905,9 @@ main_boot (int argc, char **argv)
           wtmpdb_path = optarg;
           break;
 	case 'q':
+#if HAVE_SYSTEMD
 	  quiet = 1;
+#endif
 	  break;
         default:
           usage (EXIT_FAILURE);
