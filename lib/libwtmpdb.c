@@ -38,7 +38,11 @@
 
 #include "varlink.h"
 
+#if WITH_WTMPDBD
 static int varlink_is_active = 1;
+#else
+static int varlink_is_active = 0;
+#endif
 static int varlink_is_enforced = 0;
 
 #define VARLINK_CHECKS \
@@ -207,8 +211,10 @@ wtmpdb_read_all_v2 (const char *db_path,
 	}
       else
 	return r; /* return the error if wtmpdbd is active */
-    }
+#else
+      return -EPROTONOSUPPORT;
 #endif
+    }
 
   return sqlite_read_all (db_path?db_path:_PATH_WTMPDB, cb_func, userdata, error);
 }
