@@ -66,7 +66,8 @@ main(void)
   if ((id = wtmpdb_login ("varlink", USER_PROCESS, user,
 			  login_t, tty, rhost, service, &error)) < 0)
     {
-      if (id == -ECONNREFUSED || id == -ENOENT || id == -EACCES)
+      if (id == -ECONNREFUSED || id == -ENOENT ||
+	  id == -EACCES || id == -EPROTONOSUPPORT)
 	return 77;
 
       if (error)
