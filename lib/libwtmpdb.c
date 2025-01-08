@@ -64,9 +64,9 @@ wtmpdb_login (const char *db_path, int type, const char *user,
 	      uint64_t usec_login, const char *tty, const char *rhost,
 	      const char *service, char **error)
 {
-#if WITH_WTMPDBD
   VARLINK_CHECKS
     {
+#if WITH_WTMPDBD
       int64_t id;
 
       id = varlink_login (type, user, usec_login, tty, rhost,
@@ -82,8 +82,10 @@ wtmpdb_login (const char *db_path, int type, const char *user,
 	}
       else
 	return id; /* return the error if wtmpdbd is active */
-    }
+#else
+      return -EPROTONOSUPPORT;
 #endif
+    }
   return sqlite_login (db_path?db_path:_PATH_WTMPDB, type, user,
 		       usec_login, tty, rhost, service, error);
 }
@@ -98,9 +100,9 @@ int
 wtmpdb_logout (const char *db_path, int64_t id, uint64_t usec_logout,
 	       char **error)
 {
-#if WITH_WTMPDBD
   VARLINK_CHECKS
     {
+#if WITH_WTMPDBD
       int r;
 
       r = varlink_logout (id, usec_logout, error);
@@ -115,8 +117,10 @@ wtmpdb_logout (const char *db_path, int64_t id, uint64_t usec_logout,
 	}
       else
 	return r; /* return the error if wtmpdbd is active */
-    }
+#else
+      return -EPROTONOSUPPORT;
 #endif
+    }
 
   return sqlite_logout (db_path?db_path:_PATH_WTMPDB, id, usec_logout, error);
 }
@@ -124,9 +128,9 @@ wtmpdb_logout (const char *db_path, int64_t id, uint64_t usec_logout,
 int64_t
 wtmpdb_get_id (const char *db_path, const char *tty, char **error)
 {
-#if WITH_WTMPDBD
   VARLINK_CHECKS
     {
+#if WITH_WTMPDBD
       int64_t id;
 
       id = varlink_get_id (tty, error);
@@ -141,8 +145,10 @@ wtmpdb_get_id (const char *db_path, const char *tty, char **error)
 	}
       else
 	return id; /* return the error if wtmpdbd is active */
-    }
+#else
+      return -EPROTONOSUPPORT;
 #endif
+    }
 
   return sqlite_get_id (db_path?db_path:_PATH_WTMPDB, tty, error);
 }
@@ -156,9 +162,9 @@ wtmpdb_read_all (const char *db_path,
 				char **azColName),
 		 char **error)
 {
-#if WITH_WTMPDBD
   VARLINK_CHECKS
     {
+#if WITH_WTMPDBD
       int r;
 
       r = varlink_read_all (cb_func, NULL, error);
@@ -173,8 +179,10 @@ wtmpdb_read_all (const char *db_path,
 	}
       else
 	return r; /* return the error if wtmpdbd is active */
-    }
+#else
+      return -EPROTONOSUPPORT;
 #endif
+    }
 
   return sqlite_read_all (db_path?db_path:_PATH_WTMPDB, cb_func, NULL, error);
 }
@@ -185,9 +193,9 @@ wtmpdb_read_all_v2 (const char *db_path,
 				   char **azColName),
 		    void *userdata, char **error)
 {
-#if WITH_WTMPDBD
   VARLINK_CHECKS
     {
+#if WITH_WTMPDBD
       int r;
 
       r = varlink_read_all (cb_func, userdata, error);
@@ -216,9 +224,9 @@ int
 wtmpdb_rotate (const char *db_path, const int days, char **error,
 	       char **wtmpdb_name, uint64_t *entries)
 {
-#if WITH_WTMPDBD
   VARLINK_CHECKS
     {
+#if WITH_WTMPDBD
       int r;
 
       r = varlink_rotate (days, wtmpdb_name, entries, error);
@@ -233,8 +241,10 @@ wtmpdb_rotate (const char *db_path, const int days, char **error,
 	}
       else
 	return r; /* return the error if wtmpdbd is active */
-    }
+#else
+      return -EPROTONOSUPPORT;
 #endif
+    }
 
   return sqlite_rotate (db_path?db_path:_PATH_WTMPDB, days, wtmpdb_name, entries, error);
 }
@@ -246,9 +256,9 @@ wtmpdb_get_boottime (const char *db_path, char **error)
   uint64_t boottime;
   int r;
 
-#if WITH_WTMPDBD
   VARLINK_CHECKS
     {
+#if WITH_WTMPDBD
       r = varlink_get_boottime (&boottime, error);
       if (r >= 0)
 	return boottime;
@@ -261,8 +271,10 @@ wtmpdb_get_boottime (const char *db_path, char **error)
 	}
       else
 	return 0; /* return the error if wtmpdbd is active */
-    }
+#else
+      return -EPROTONOSUPPORT;
 #endif
+    }
 
   r = sqlite_get_boottime (db_path?db_path:_PATH_WTMPDB,
 			   &boottime, error);
