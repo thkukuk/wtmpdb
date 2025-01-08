@@ -36,7 +36,6 @@
 #include "wtmpdb.h"
 #include "sqlite.h"
 
-#if WITH_WTMPDBD
 #include "varlink.h"
 
 static int varlink_is_active = 1;
@@ -51,8 +50,6 @@ static int varlink_is_enforced = 0;
   if (varlink_is_enforced || (varlink_is_active && db_path == NULL))
 
 #define VARLINK_IS_NOT_RUNNING(r) (r == -ECONNREFUSED || r == -ENOENT || r == -ECONNRESET)
-
-#endif
 
 /*
   Add new wtmp entry to db.
