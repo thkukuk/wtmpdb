@@ -484,7 +484,16 @@ announce_ready (void)
   int r = sd_notify (0, "READY=1\n"
 		     "STATUS=Processing requests...");
   if (r < 0)
-    log_msg (LOG_ERR, "sd_notify() failed: %s", strerror(-r));
+    log_msg (LOG_ERR, "sd_notify(READY) failed: %s", strerror(-r));
+}
+
+static void
+announce_stopping (void)
+{
+  int r = sd_notify (0, "STOPPING=1\n"
+		     "STATUS=Shutting down...");
+  if (r < 0)
+    log_msg (LOG_ERR, "sd_notify(STOPPING) failed: %s", strerror(-r));
 }
 
 
@@ -678,7 +687,11 @@ run_varlink (void)
 
   announce_ready();
 
-  return sd_event_loop (event);
+  r = sd_event_loop (event);
+
+  announce_stopping();
+
+  return r;
 }
 
 static void
@@ -696,8 +709,6 @@ print_help (void)
 int
 main (int argc, char **argv)
 {
-  int r;
-
   while (1)
     {
       int c;
@@ -754,9 +765,12 @@ main (int argc, char **argv)
   if (verbose_flag)
     log_msg (LOG_INFO, "Starting wtmpdbd (%s) %s...", PACKAGE, VERSION);
 
-  r = run_varlink ();
+  int r = run_varlink ();
   if (r < 0)
-    log_msg (LOG_ERR, "ERROR: varlink loop failed: %s", strerror (-r));
+    {
+      log_msg (LOG_ERR, "ERROR: varlink loop failed: %s", strerror (-r));
+      return -r;
+    }
 
-  return -r;
+  return 0;
 }
