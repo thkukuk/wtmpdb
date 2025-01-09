@@ -773,5 +773,8 @@ main (int argc, char **argv)
       return -r;
     }
 
+  if (verbose_flag)
+    log_msg (LOG_INFO, "wtmpdbd stopped.");
+
   return 0;
 }
