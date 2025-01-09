@@ -655,13 +655,6 @@ run_varlink (void)
       return r;
     }
 
-  r = sd_varlink_server_listen_address(varlink_reader, _VARLINK_WTMPDB_SOCKET_READER, 0666);
-  if (r < 0)
-    {
-      log_msg (LOG_ERR, "Failed to bind to Varlink socket (reader): %s", strerror (-r));
-      return r;
-    }
-
   r = init_varlink_server(&varlink_writer, (debug_flag?0:SD_VARLINK_SERVER_ROOT_ONLY)|SD_VARLINK_SERVER_INHERIT_USERDATA, event, "varlink-writer");
   if (r < 0)
     return r;
@@ -678,17 +671,25 @@ run_varlink (void)
       return r;
     }
 
-  r = sd_varlink_server_listen_address(varlink_writer, _VARLINK_WTMPDB_SOCKET_WRITER, 0600);
-  if (r < 0)
+  if (!socket_activation)
     {
-      log_msg (LOG_ERR, "Failed to bind to Varlink socket (writer): %s", strerror (-r));
-      return r;
+      r = sd_varlink_server_listen_address(varlink_reader, _VARLINK_WTMPDB_SOCKET_READER, 0666);
+      if (r < 0)
+	{
+	  log_msg (LOG_ERR, "Failed to bind to Varlink socket (reader): %s", strerror (-r));
+	  return r;
+	}
+
+      r = sd_varlink_server_listen_address(varlink_writer, _VARLINK_WTMPDB_SOCKET_WRITER, 0600);
+      if (r < 0)
+	{
+	  log_msg (LOG_ERR, "Failed to bind to Varlink socket (writer): %s", strerror (-r));
+	  return r;
+	}
     }
 
   announce_ready();
-
   r = sd_event_loop (event);
-
   announce_stopping();
 
   return r;
