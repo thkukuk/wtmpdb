@@ -19,14 +19,16 @@ The main features of `wtmpdb` are:
 * It's using sqlite3 as database backend.
 * Data is mainly collected via a PAM module, so that every tool can make use of it, without modifying existing packages. For cases where this is not possible, there is a library `libwtmpdb`.
 * The `wtmpdb last` output is as compatible as possible with the old `last` implementation, but not all options are yet supported. For compatibility reasons, a symlink `last` pointing to `wtmpdb` can be created.
+* There is an optional `wtmpdbd` daemon for central management of the sqlite3 database using sd-varlink for communication with `libwtmpdb`.
 
 **IMPORTANT** To be Y2038 safe on 32bit architectures, the binaries needs to be build with a **64bit time_t**. This should be the standard on 64bit architectures.
 
-The package constists of a library, PAM module and an application:
+The package constists of a library, PAM module, a commandline interface and an optional daemon:
 
 * `libwtmpdb.so.0` contains all high level functions to manage the data.
 * `pam_wtmpdb.so` stores the login and logout time of an user into the database.
 * `wtmpdb` is used to add reboot and shutdown entries and to display existing entries (like `last`).
+* `wtmpdbd` is used to manage the database in a secure way.
 
 By default the database will be written as `/var/lib/wtmpdb/wtmpdb.db`.
 
@@ -49,7 +51,7 @@ The PAM module (`pam_wtmpdb.so`) needs to be removed for the sshd service, or if
 
 ```
 session    optional        pam_wtmpdb.so   skip_if=sshd
-``` 
+```
 
 ## Design
 
@@ -86,6 +88,11 @@ The `wtmpdb` command supports the following tasks:
 * `wtmpdb boot` creates a boot entry.
 * `wtmpdb shutdown` add the shutdown time to the current boot entry.
 
+### Daemon
+
+The `wtmpdbd` daemon provides a varlink interface for `libwtmpdb`. This allows to secure the database so that only root has access to it. The daemon will be started about two systemd socket units.
+
 ### systemd service
 
-The `wtmpdb-update-boot.service` will record the boot and shutdown times of a service.
+* `wtmpdb-update-boot.service` will record the boot and shutdown times of a service.
+* `wtmpdbd-reader.socket` and `wtmpdbd-writer.socket` will start `wtmpdbd` on demand.
