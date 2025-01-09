@@ -4,5 +4,6 @@ Documentation=man:wtmpdbd(8)
 
 [Service]
 Type=notify
+Environment="WTMPDBD_OPTS="
 EnvironmentFile=-/etc/default/wtmpdbd
 ExecStart=/usr/libexec/wtmpdbd -s $WTMPDBD_OPTS
