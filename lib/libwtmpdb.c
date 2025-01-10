@@ -53,7 +53,7 @@ static int varlink_is_enforced = 0;
   /* we can use varlink only if no specific database is requested */ \
   if (varlink_is_enforced || (varlink_is_active && db_path == NULL))
 
-#define VARLINK_IS_NOT_RUNNING(r) (r == -ECONNREFUSED || r == -ENOENT || r == -ECONNRESET)
+#define VARLINK_IS_NOT_RUNNING(r) (r == -ECONNREFUSED || r == -ENOENT || r == -ECONNRESET || r == -EACCES)
 
 /*
   Add new wtmp entry to db.
