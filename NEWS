@@ -1,3 +1,6 @@
+Version 0.50.0
+* Introduce wtmpdbd as single daemon accessing the database (#12)
+
 Version 0.13.0
 * Fix variable overflow on 32bit systems and check for this (#15)
 
