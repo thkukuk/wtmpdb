@@ -64,6 +64,9 @@ static char *wtmpdb_path = NULL;
 
 #define LOGROTATE_DAYS 60
 
+/* lenght of login string cannot become longer */
+#define LAST_TIMESTAMP_LEN 32
+
 static uint64_t wtmp_start = UINT64_MAX;
 static int after_reboot = 0;
 
@@ -73,6 +76,7 @@ static int nohostname = 0;
 static int noservice = 1;
 static int dflag = 0;
 static int iflag = 0;
+static int jflag = 0;
 static int wflag = 0;
 static int xflag = 0;
 static const int name_len = 8; /* LAST_LOGIN_LEN */
@@ -273,47 +277,68 @@ map_soft_reboot (const char *user)
   return user;
 }
 
+static const char *
+remove_parentheses(const char *str)
+{
+
+  static char buf[LAST_TIMESTAMP_LEN];
+
+  if (strlen(str) >= LAST_TIMESTAMP_LEN)
+    return str;
+
+  char *cp = strchr (str, '(');
+
+  if (cp == NULL)
+    return str;
+
+  cp++;
+  strncpy(buf, cp, LAST_TIMESTAMP_LEN);
+
+  cp = strchr (buf, ')');
+  if (cp)
+    *cp = '\0';
+
+  return buf;
+}
+
+static int first_entry = 1;
 static void
 print_line (const char *user, const char *tty, const char *host,
 	    const char *print_service,
 	    const char *logintime, const char *logouttime,
 	    const char *length)
 {
-  char *line;
-
-  if (nohostname)
+  if (jflag)
     {
-      if (asprintf (&line, "%-8.*s %-12.12s%s %-*.*s - %-*.*s %s\n",
-		    wflag?(int)strlen (user):name_len,
-		    map_soft_reboot (user), tty, print_service,
-		    login_len, login_len, logintime,
-		    logout_len, logout_len, logouttime,
-		    length) < 0)
+      if (first_entry)
+	first_entry = 0;
+      else
+	printf (",\n");
+      printf ("     { \"user\": \"%s\",\n", user);
+      printf ("       \"tty\": \"%s\",\n", tty);
+      if (!nohostname)
+	printf ("       \"hostname\": \"%s\",\n", host);
+      if (print_service && strlen (print_service) > 0)
+	printf ("       \"service\": \"%s\",\n", print_service);
+      printf ("       \"login\": \"%s\",\n", logintime);
+      if (length[0] == ' ' || length[0] == '(')
 	{
-	  fprintf (stderr, "Out f memory");
-	  exit (EXIT_FAILURE);
+	  printf ("       \"logout\": \"%s\",\n", logouttime);
+	  printf ("       \"length\": \"%s\"\n",  remove_parentheses(length));
 	}
+      else
+	printf ("       \"logout\": \"%s %s\"\n", logouttime, length);
+      printf ("     }");
     }
   else
     {
-      if (hostlast)
+      char *line;
+
+      if (nohostname)
 	{
-	  if (asprintf (&line, "%-8.*s %-12.12s%s %-*.*s - %-*.*s %-12.12s %s\n",
-			wflag?(int)strlen(user):name_len, map_soft_reboot (user),
-			tty, print_service,
-			login_len, login_len, logintime,
-			logout_len, logout_len, logouttime,
-			length, host) < 0)
-	    {
-	      fprintf (stderr, "Out f memory");
-	      exit (EXIT_FAILURE);
-	    }
-	}
-      else
-	{
-	  if (asprintf (&line, "%-8.*s %-12.12s %-16.*s%s %-*.*s - %-*.*s %s\n",
-			wflag?(int)strlen(user):name_len, map_soft_reboot (user), tty,
-			wflag?(int)strlen(host):host_len, host, print_service,
+	  if (asprintf (&line, "%-8.*s %-12.12s%s %-*.*s - %-*.*s %s\n",
+			wflag?(int)strlen (user):name_len,
+			map_soft_reboot (user), tty, print_service,
 			login_len, login_len, logintime,
 			logout_len, logout_len, logouttime,
 			length) < 0)
@@ -322,10 +347,39 @@ print_line (const char *user, const char *tty, const char *host,
 	      exit (EXIT_FAILURE);
 	    }
 	}
-    }
+      else
+	{
+	  if (hostlast)
+	    {
+	      if (asprintf (&line, "%-8.*s %-12.12s%s %-*.*s - %-*.*s %-12.12s %s\n",
+			    wflag?(int)strlen(user):name_len, map_soft_reboot (user),
+			    tty, print_service,
+			    login_len, login_len, logintime,
+			    logout_len, logout_len, logouttime,
+			    length, host) < 0)
+		{
+		  fprintf (stderr, "Out f memory");
+		  exit (EXIT_FAILURE);
+		}
+	    }
+	  else
+	    {
+	      if (asprintf (&line, "%-8.*s %-12.12s %-16.*s%s %-*.*s - %-*.*s %s\n",
+			    wflag?(int)strlen(user):name_len, map_soft_reboot (user), tty,
+			    wflag?(int)strlen(host):host_len, host, print_service,
+			    login_len, login_len, logintime,
+			    logout_len, logout_len, logouttime,
+			    length) < 0)
+		{
+		  fprintf (stderr, "Out f memory");
+		  exit (EXIT_FAILURE);
+		}
+	    }
+	}
 
-  printf ("%s", line);
-  free (line);
+      printf ("%s", line);
+      free (line);
+    }
 }
 
 static int
@@ -555,6 +609,7 @@ usage (int retval)
   fputs ("  -f, --file FILE     Use FILE as wtmpdb database\n", output);
   fputs ("  -F, --fulltimes     Display full times and dates\n", output);
   fputs ("  -i, --ip            Translate hostnames to IP addresses\n", output);
+  fputs ("  -j, --json          Generate JSON output\n", output);
   fputs ("  -n, --limit N       Display only first N entries\n", output);
   fputs ("  -p, --present TIME  Display who was present at TIME\n", output);
   fputs ("  -R, --nohostname    Don't display hostname\n", output);
@@ -675,13 +730,14 @@ main_last (int argc, char **argv)
     {"system", no_argument, NULL, 'x'},
     {"until", required_argument, NULL, 'u'},
     {"time-format", required_argument, NULL, TIMEFMT_VALUE},
+    {"json", no_argument, NULL, 'j'},
     {NULL, 0, NULL, '\0'}
   };
   int time_fmt = TIMEFMT_CTIME;
   char *error = NULL;
   int c;
 
-  while ((c = getopt_long (argc, argv, "adf:Fin:p:RSs:t:wx", longopts, NULL)) != -1)
+  while ((c = getopt_long (argc, argv, "adf:Fijn:p:RSs:t:wx", longopts, NULL)) != -1)
     {
       switch (c)
         {
@@ -702,6 +758,9 @@ main_last (int argc, char **argv)
 	  break;
 	case 'i':
 	  iflag = 1;
+	  break;
+	case 'j':
+	  jflag = 1;
 	  break;
 	case 'n':
 	  maxentries = strtoul (optarg, NULL, 10);
@@ -780,6 +839,9 @@ main_last (int argc, char **argv)
       usage (EXIT_FAILURE);
     }
 
+  if (jflag)
+    printf ("{\n   \"entries\": [\n");
+
   if (wtmpdb_read_all (wtmpdb_path, print_entry, &error) != 0)
     {
       if (error)
@@ -794,14 +856,25 @@ main_last (int argc, char **argv)
     }
 
   if (wtmp_start == UINT64_MAX)
-    printf ("%s has no entries\n", wtmpdb_path?wtmpdb_path:"wtmpdb");
+    {
+      if (!jflag)
+	printf ("%s has no entries\n", wtmpdb_path?wtmpdb_path:"wtmpdb");
+    }
   else if (time_fmt != TIMEFMT_NOTIME)
     {
       char wtmptime[32];
       format_time (time_fmt, wtmptime, sizeof (wtmptime),
 		   wtmp_start/USEC_PER_SEC);
-      printf ("\n%s begins %s\n", wtmpdb_path?wtmpdb_path:"wtmpdb", wtmptime);
+      if (jflag)
+	printf ("\n   ],\n   \"start\": \"%s\"\n", wtmptime);
+      else
+	printf ("\n%s begins %s\n", wtmpdb_path?wtmpdb_path:"wtmpdb", wtmptime);
     }
+  else if (jflag)
+    printf ("\n   ]\n");
+
+  if (jflag)
+    printf ("}\n");
   return EXIT_SUCCESS;
 }
 
