@@ -68,6 +68,21 @@ static SD_VARLINK_DEFINE_METHOD(
 		SD_VARLINK_DEFINE_INPUT(ExitCode, SD_VARLINK_INT, SD_VARLINK_NULLABLE),
 		SD_VARLINK_DEFINE_OUTPUT(Success, SD_VARLINK_BOOL, 0));
 
+static SD_VARLINK_DEFINE_METHOD(
+		Ping,
+		SD_VARLINK_FIELD_COMMENT("Check if service is alive"),
+		SD_VARLINK_DEFINE_OUTPUT(Alive, SD_VARLINK_BOOL, 0));
+
+static SD_VARLINK_DEFINE_METHOD(
+                SetLogLevel,
+                SD_VARLINK_FIELD_COMMENT("Set debug and verbose mode, using BSD syslog log level integers."),
+                SD_VARLINK_DEFINE_INPUT(Level, SD_VARLINK_INT, SD_VARLINK_NULLABLE));
+
+static SD_VARLINK_DEFINE_METHOD(
+                GetEnvironment,
+                SD_VARLINK_FIELD_COMMENT("Returns the current environment block, i.e. the contents of environ[]."),
+                SD_VARLINK_DEFINE_OUTPUT(Environment, SD_VARLINK_STRING, SD_VARLINK_NULLABLE|SD_VARLINK_ARRAY));
+
 static SD_VARLINK_DEFINE_ERROR(NoEntryFound);
 static SD_VARLINK_DEFINE_ERROR(InternalError);
 
@@ -87,6 +102,12 @@ SD_VARLINK_DEFINE_INTERFACE(
                 &vl_method_ReadAll,
  		SD_VARLINK_SYMBOL_COMMENT("Stop the daemon"),
                 &vl_method_Quit,
+		SD_VARLINK_SYMBOL_COMMENT("Checks if the service is running."),
+                &vl_method_Ping,
+                SD_VARLINK_SYMBOL_COMMENT("Sets the maximum log level."),
+                &vl_method_SetLogLevel,
+                SD_VARLINK_SYMBOL_COMMENT("Get current environment block."),
+                &vl_method_GetEnvironment,
 		SD_VARLINK_SYMBOL_COMMENT("No entry found"),
                 &vl_error_NoEntryFound,
 		SD_VARLINK_SYMBOL_COMMENT("Internal Error"),

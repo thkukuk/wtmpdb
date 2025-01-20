@@ -69,6 +69,111 @@ log_msg (int priority, const char *fmt, ...)
   va_end (ap);
 }
 
+static int
+vl_method_ping(sd_varlink *link, sd_json_variant *parameters,
+	       sd_varlink_method_flags_t _unused_(flags),
+	       void _unused_(*userdata))
+{
+  int r;
+
+  if (verbose_flag)
+    log_msg (LOG_INFO, "Varlink method \"Ping\" called...");
+
+  r = sd_varlink_dispatch(link, parameters, NULL, NULL);
+  if (r != 0)
+    return r;
+
+  return sd_varlink_replybo(link, SD_JSON_BUILD_PAIR_BOOLEAN("Alive", true));
+}
+
+static int
+vl_method_set_log_level(sd_varlink *link, sd_json_variant *parameters,
+			sd_varlink_method_flags_t _unused_(flags),
+			void _unused_(*userdata))
+{
+  static const sd_json_dispatch_field dispatch_table[] = {
+    { "Level", SD_JSON_VARIANT_INTEGER, sd_json_dispatch_int, 0, SD_JSON_MANDATORY },
+    {}
+  };
+
+  int r, level;
+  uid_t peer_uid;
+
+  if (verbose_flag)
+    log_msg (LOG_INFO, "Varlink method \"SetLogLevel\" called...");
+
+  r = sd_varlink_dispatch(link, parameters, dispatch_table, &level);
+  if (r != 0)
+    return r;
+
+  r = sd_varlink_get_peer_uid(link, &peer_uid);
+  if (r < 0)
+    {
+      log_msg(LOG_ERR, "Failed to get peer UID: %s", strerror(-r));
+      return r;
+    }
+
+  if (peer_uid != 0)
+    return sd_varlink_error(link, SD_VARLINK_ERROR_PERMISSION_DENIED, parameters);
+
+  if (level >= LOG_DEBUG)
+    debug_flag = 1;
+  else
+    debug_flag = 0;
+
+  if (level >= LOG_INFO)
+    verbose_flag = 1;
+  else
+    verbose_flag = 0;
+
+  if (verbose_flag)
+    log_msg (LOG_INFO, "New log settings: debug=%i, verbose=%i", debug_flag, verbose_flag);
+
+  return sd_varlink_reply(link, NULL);
+}
+
+static int
+vl_method_get_environment(sd_varlink *link, sd_json_variant *parameters,
+			  sd_varlink_method_flags_t _unused_(flags),
+			  void _unused_(*userdata))
+{
+  uid_t peer_uid;
+  int r;
+
+  if (verbose_flag)
+    log_msg (LOG_INFO, "Varlink method \"GetEnvironment\" called...");
+
+  r = sd_varlink_dispatch(link, parameters, NULL, NULL);
+  if (r != 0)
+    return r;
+
+  r = sd_varlink_get_peer_uid(link, &peer_uid);
+  if (r < 0)
+    {
+      log_msg(LOG_ERR, "Failed to get peer UID: %s", strerror(-r));
+      return r;
+    }
+
+  if (peer_uid != 0)
+    return sd_varlink_error(link, SD_VARLINK_ERROR_PERMISSION_DENIED, parameters);
+
+#if 0
+  for (char **e = environ; *e != 0; e++)
+    {
+      if (!env_assignment_is_valid(*e))
+	goto invalid;
+      if (!utf8_is_valid(*e))
+	goto invalid;
+    }
+#endif
+
+  return sd_varlink_replybo(link, SD_JSON_BUILD_PAIR_STRV("Environment", environ));
+
+#if 0
+ invalid:
+  return sd_varlink_error(link, "io.systemd.service.InconsistentEnvironment", parameters);
+#endif
+}
 
 struct login_record {
   int type;
@@ -497,7 +602,7 @@ announce_stopping (void)
 }
 
 
-#if !HAVE_SD_VARLINK_SERVER_LISTEN_NAME
+#if !defined(HAVE_SD_VARLINK_SERVER_LISTEN_NAME)
 /* clone of sd_varlink_server_listen_name in the case we have systemd
    v257 and not v258. */
 static char **
@@ -515,7 +620,7 @@ strv_free(char **v)
 
 static inline void strv_freep(char ***p) { strv_free(*p); }
 
-int
+static int
 sd_varlink_server_listen_name(sd_varlink_server *s, const char *name)
 {
   _cleanup_(strv_freep) char **names = NULL;
@@ -640,14 +745,17 @@ run_varlink (void)
       return r;
     }
 
-  r = init_varlink_server(&varlink_reader, 0|SD_VARLINK_SERVER_INHERIT_USERDATA, event, "varlink-reader");
+  r = init_varlink_server(&varlink_reader,
+			  SD_VARLINK_SERVER_ACCOUNT_UID|SD_VARLINK_SERVER_INHERIT_USERDATA,
+			  event, "varlink-reader");
   if (r < 0)
     return r;
 
   r = sd_varlink_server_bind_method_many (varlink_reader,
 					  "org.openSUSE.wtmpdb.GetBootTime", vl_method_get_boottime,
 					  "org.openSUSE.wtmpdb.GetID",       vl_method_get_id,
-					  "org.openSUSE.wtmpdb.ReadAll",     vl_method_read_all);
+					  "org.openSUSE.wtmpdb.ReadAll",     vl_method_read_all,
+					  "org.openSUSE.wtmpdb.Ping",        vl_method_ping);
   if (r < 0)
     {
       log_msg(LOG_ERR, "Failed to bind Varlink methods: %s",
@@ -655,15 +763,17 @@ run_varlink (void)
       return r;
     }
 
-  r = init_varlink_server(&varlink_writer, (debug_flag?0:SD_VARLINK_SERVER_ROOT_ONLY)|SD_VARLINK_SERVER_INHERIT_USERDATA, event, "varlink-writer");
+  r = init_varlink_server(&varlink_writer, (debug_flag?0:SD_VARLINK_SERVER_ROOT_ONLY)|SD_VARLINK_SERVER_ACCOUNT_UID|SD_VARLINK_SERVER_INHERIT_USERDATA, event, "varlink-writer");
   if (r < 0)
     return r;
 
   r = sd_varlink_server_bind_method_many (varlink_writer,
-					  "org.openSUSE.wtmpdb.Login",   vl_method_login,
-					  "org.openSUSE.wtmpdb.Logout",  vl_method_logout,
-					  "org.openSUSE.wtmpdb.Rotate",  vl_method_rotate,
-					  "org.openSUSE.wtmpdb.Quit",    vl_method_quit);
+					  "org.openSUSE.wtmpdb.Login",          vl_method_login,
+					  "org.openSUSE.wtmpdb.Logout",         vl_method_logout,
+					  "org.openSUSE.wtmpdb.Rotate",         vl_method_rotate,
+					  "org.openSUSE.wtmpdb.SetLogLevel",    vl_method_set_log_level,
+					  "org.openSUSE.wtmpdb.GetEnvironment", vl_method_get_environment,
+					  "org.openSUSE.wtmpdb.Quit",           vl_method_quit);
   if (r < 0)
     {
       log_msg(LOG_ERR, "Failed to bind Varlink methods: %s",
