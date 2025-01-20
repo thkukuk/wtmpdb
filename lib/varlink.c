@@ -105,7 +105,7 @@ varlink_login (int type, const char *user, uint64_t usec_login,
   sd_json_variant *result;
   int r;
 
-  r = connect_to_wtmpdbd(&link, _VARLINK_WTMPDB_SOCKET_WRITER, error);
+  r = connect_to_wtmpdbd(&link, _VARLINK_WTMPDB_SOCKET, error);
   if (r < 0)
     return r;
 
@@ -194,7 +194,7 @@ varlink_logout (int64_t id, uint64_t usec_logout, char **error)
   sd_json_variant *result;
   int r;
 
-  r = connect_to_wtmpdbd(&link, _VARLINK_WTMPDB_SOCKET_WRITER, error);
+  r = connect_to_wtmpdbd(&link, _VARLINK_WTMPDB_SOCKET, error);
   if (r < 0)
     return r;
 
@@ -267,7 +267,7 @@ varlink_get_id (const char *tty, char **error)
   const char *error_id;
   int r;
 
-  r = connect_to_wtmpdbd(&link, _VARLINK_WTMPDB_SOCKET_READER, error);
+  r = connect_to_wtmpdbd(&link, _VARLINK_WTMPDB_SOCKET, error);
   if (r < 0)
     return r;
 
@@ -352,7 +352,7 @@ varlink_get_boottime (uint64_t *boottime, char **error)
   const char *error_id;
   int r;
 
-  r = connect_to_wtmpdbd(&link, _VARLINK_WTMPDB_SOCKET_READER, error);
+  r = connect_to_wtmpdbd(&link, _VARLINK_WTMPDB_SOCKET, error);
   if (r < 0)
     return r;
 
@@ -432,7 +432,7 @@ varlink_rotate (const int days, char **backup_name, uint64_t *entries, char **er
   sd_json_variant *result;
   int r;
 
-  r = connect_to_wtmpdbd(&link, _VARLINK_WTMPDB_SOCKET_WRITER, error);
+  r = connect_to_wtmpdbd(&link, _VARLINK_WTMPDB_SOCKET, error);
   if (r < 0)
     return r;
 
@@ -541,7 +541,7 @@ varlink_read_all (int (*cb_func)(void *unused, int argc, char **argv,
   sd_json_variant *result;
   int r;
 
-  r = connect_to_wtmpdbd(&link, _VARLINK_WTMPDB_SOCKET_READER, error);
+  r = connect_to_wtmpdbd(&link, _VARLINK_WTMPDB_SOCKET, error);
   if (r < 0)
     return r;
 

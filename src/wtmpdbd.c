@@ -97,24 +97,29 @@ vl_method_set_log_level(sd_varlink *link, sd_json_variant *parameters,
   };
 
   int r, level;
-  uid_t peer_uid;
 
   if (verbose_flag)
-    log_msg (LOG_INFO, "Varlink method \"SetLogLevel\" called...");
+    log_msg(LOG_INFO, "Varlink method \"SetLogLevel\" called...");
 
   r = sd_varlink_dispatch(link, parameters, dispatch_table, &level);
   if (r != 0)
     return r;
 
+  if (debug_flag)
+    log_msg(LOG_DEBUG, "Log level %i requested", level);
+
+  uid_t peer_uid;
   r = sd_varlink_get_peer_uid(link, &peer_uid);
   if (r < 0)
     {
       log_msg(LOG_ERR, "Failed to get peer UID: %s", strerror(-r));
       return r;
     }
-
   if (peer_uid != 0)
-    return sd_varlink_error(link, SD_VARLINK_ERROR_PERMISSION_DENIED, parameters);
+    {
+      log_msg(LOG_WARNING, "SetLogLevel: peer UID %i denied", peer_uid);
+      return sd_varlink_error(link, SD_VARLINK_ERROR_PERMISSION_DENIED, parameters);
+    }
 
   if (level >= LOG_DEBUG)
     debug_flag = 1;
@@ -137,7 +142,6 @@ vl_method_get_environment(sd_varlink *link, sd_json_variant *parameters,
 			  sd_varlink_method_flags_t _unused_(flags),
 			  void _unused_(*userdata))
 {
-  uid_t peer_uid;
   int r;
 
   if (verbose_flag)
@@ -147,17 +151,20 @@ vl_method_get_environment(sd_varlink *link, sd_json_variant *parameters,
   if (r != 0)
     return r;
 
+  uid_t peer_uid;
   r = sd_varlink_get_peer_uid(link, &peer_uid);
   if (r < 0)
     {
       log_msg(LOG_ERR, "Failed to get peer UID: %s", strerror(-r));
       return r;
     }
-
   if (peer_uid != 0)
-    return sd_varlink_error(link, SD_VARLINK_ERROR_PERMISSION_DENIED, parameters);
+    {
+      log_msg(LOG_WARNING, "GetEnvironment: peer UID %i denied", peer_uid);
+      return sd_varlink_error(link, SD_VARLINK_ERROR_PERMISSION_DENIED, parameters);
+    }
 
-#if 0
+#if 0 /* XXX */
   for (char **e = environ; *e != 0; e++)
     {
       if (!env_assignment_is_valid(*e))
@@ -198,6 +205,7 @@ vl_method_login(sd_varlink *link, sd_json_variant *parameters,
 		sd_varlink_method_flags_t _unused_(flags),
 		void _unused_(*userdata))
 {
+  _cleanup_(freep) char *error = NULL;
   _cleanup_(login_record_free) struct login_record p = {
     .type = -1,
     .user = NULL,
@@ -224,26 +232,35 @@ vl_method_login(sd_varlink *link, sd_json_variant *parameters,
   r = sd_varlink_dispatch(link, parameters, dispatch_table, &p);
   if (r != 0)
     {
-      log_msg(LOG_ERR, "Add login record request: varlink dispatch failed: %s", strerror (-r));
+      log_msg(LOG_ERR, "Login method: varlink dispatch failed: %s", strerror (-r));
       return r;
     }
 
   if (debug_flag)
     {
-      log_msg(LOG_DEBUG, "Add login record: %i, %s, %li, %s, %s, %s",
+      log_msg(LOG_DEBUG, "Requested login record: %i, %s, %li, %s, %s, %s",
 	      p.type, p.user, p.usec_login, p.tty, p.rhost, p.service);
     }
-  else
-    {
-      _cleanup_(freep) char *error = NULL;
 
-      id = wtmpdb_login (_PATH_WTMPDB, p.type, p.user, p.usec_login, p.tty, p.rhost, p.service, &error);
-      if (id < 0 || error != NULL)
-	{
-	  log_msg(LOG_ERR, "Get ID request from db failed: %s", error);
-	  return sd_varlink_errorbo(link, "org.openSUSE.rebootmgr.InternalError",
-				    SD_JSON_BUILD_PAIR_STRING("ErrorMsg", error));
-	}
+  uid_t peer_uid;
+  r = sd_varlink_get_peer_uid(link, &peer_uid);
+  if (r < 0)
+    {
+      log_msg(LOG_ERR, "Failed to get peer UID: %s", strerror(-r));
+      return r;
+    }
+  if (peer_uid != 0)
+    {
+      log_msg(LOG_WARNING, "Login: peer UID %i denied", peer_uid);
+      return sd_varlink_error(link, SD_VARLINK_ERROR_PERMISSION_DENIED, parameters);
+    }
+
+  id = wtmpdb_login (_PATH_WTMPDB, p.type, p.user, p.usec_login, p.tty, p.rhost, p.service, &error);
+  if (id < 0 || error != NULL)
+    {
+      log_msg(LOG_ERR, "Get ID request from db failed: %s", error);
+      return sd_varlink_errorbo(link, "org.openSUSE.rebootmgr.InternalError",
+				SD_JSON_BUILD_PAIR_STRING("ErrorMsg", error));
     }
 
   return sd_varlink_replybo(link, SD_JSON_BUILD_PAIR_INTEGER("ID", id));
@@ -276,12 +293,25 @@ vl_method_logout(sd_varlink *link, sd_json_variant *parameters,
   r = sd_varlink_dispatch(link, parameters, dispatch_table, &p);
   if (r != 0)
     {
-      log_msg(LOG_ERR, "Logout request: varlik dispatch failed: %s", strerror (-r));
+      log_msg(LOG_ERR, "Logout request: varlink dispatch failed: %s", strerror (-r));
       return r;
     }
 
   if (debug_flag)
     log_msg(LOG_DEBUG, "Logout for entry '%li' at time '%lu' requested", p.id, p.usec_logout);
+
+  uid_t peer_uid;
+  r = sd_varlink_get_peer_uid(link, &peer_uid);
+  if (r < 0)
+    {
+      log_msg(LOG_ERR, "Failed to get peer UID: %s", strerror(-r));
+      return r;
+    }
+  if (peer_uid != 0)
+    {
+      log_msg(LOG_WARNING, "Logout: peer UID %i denied", peer_uid);
+      return sd_varlink_error(link, SD_VARLINK_ERROR_PERMISSION_DENIED, parameters);
+    }
 
   id = wtmpdb_logout (_PATH_WTMPDB, p.id, p.usec_logout, &error);
   if (id < 0 || error != NULL)
@@ -329,7 +359,7 @@ vl_method_get_id(sd_varlink *link, sd_json_variant *parameters,
   r = sd_varlink_dispatch(link, parameters, dispatch_table, &p);
   if (r != 0)
     {
-      log_msg(LOG_ERR, "Get ID request: varlik dispatch failed: %s", strerror (-r));
+      log_msg(LOG_ERR, "Get ID request: varlink dispatch failed: %s", strerror (-r));
       return r;
     }
 
@@ -366,7 +396,7 @@ vl_method_get_boottime(sd_varlink *link, sd_json_variant *parameters,
   r = sd_varlink_dispatch(link, parameters, dispatch_table, /* userdata= */ NULL);
   if (r != 0)
     {
-      log_msg(LOG_ERR, "Get boottime request: varlik dispatch failed: %s", strerror (-r));
+      log_msg(LOG_ERR, "Get boottime request: varlink dispatch failed: %s", strerror (-r));
       return r;
     }
 
@@ -472,7 +502,7 @@ vl_method_read_all(sd_varlink *link, sd_json_variant *parameters,
   r = sd_varlink_dispatch(link, parameters, dispatch_table, /* userdata= */ NULL);
   if (r != 0)
     {
-      log_msg(LOG_ERR, "Get all entries request: varlik dispatch failed: %s", strerror (-r));
+      log_msg(LOG_ERR, "Get all entries request: varlink dispatch failed: %s", strerror (-r));
       return r;
     }
 
@@ -514,12 +544,25 @@ vl_method_rotate(sd_varlink *link, sd_json_variant *parameters,
   r = sd_varlink_dispatch(link, parameters, dispatch_table, &p);
   if (r != 0)
     {
-      log_msg(LOG_ERR, "Rotate request: varlik dispatch failed: %s", strerror (-r));
+      log_msg(LOG_ERR, "Rotate request: varlink dispatch failed: %s", strerror (-r));
       return r;
     }
 
   if (debug_flag)
     log_msg(LOG_DEBUG, "Rotate of database for entries older than '%i' days requested", p.days);
+
+  uid_t peer_uid;
+  r = sd_varlink_get_peer_uid(link, &peer_uid);
+  if (r < 0)
+    {
+      log_msg(LOG_ERR, "Failed to get peer UID: %s", strerror(-r));
+      return r;
+    }
+  if (peer_uid != 0)
+    {
+      log_msg(LOG_WARNING, "Rotate: peer UID %i denied", peer_uid);
+      return sd_varlink_error(link, SD_VARLINK_ERROR_PERMISSION_DENIED, parameters);
+    }
 
   _cleanup_(freep) char *backup = NULL;
   uint64_t entries = 0;
@@ -565,8 +608,21 @@ vl_method_quit (sd_varlink *link, sd_json_variant *parameters,
   r = sd_varlink_dispatch (link, parameters, dispatch_table, /* userdata= */ NULL);
   if (r != 0)
     {
-      log_msg (LOG_ERR, "Quit request: varlik dispatch failed: %s", strerror (-r));
+      log_msg (LOG_ERR, "Quit request: varlink dispatch failed: %s", strerror (-r));
       return r;
+    }
+
+  uid_t peer_uid;
+  r = sd_varlink_get_peer_uid(link, &peer_uid);
+  if (r < 0)
+    {
+      log_msg(LOG_ERR, "Failed to get peer UID: %s", strerror(-r));
+      return r;
+    }
+  if (peer_uid != 0)
+    {
+      log_msg(LOG_WARNING, "Quit: peer UID %i denied", peer_uid);
+      return sd_varlink_error(link, SD_VARLINK_ERROR_PERMISSION_DENIED, parameters);
     }
 
   r = sd_event_exit (loop, p.code);
@@ -601,133 +657,12 @@ announce_stopping (void)
     log_msg (LOG_ERR, "sd_notify(STOPPING) failed: %s", strerror(-r));
 }
 
-
-#if !defined(HAVE_SD_VARLINK_SERVER_LISTEN_NAME)
-/* clone of sd_varlink_server_listen_name in the case we have systemd
-   v257 and not v258. */
-static char **
-strv_free(char **v)
-{
-  if (!v)
-    return NULL;
-
-  for (char **i = v; *i; i++)
-    free(*i);
-
-  free(v);
-  return NULL;
-}
-
-static inline void strv_freep(char ***p) { strv_free(*p); }
-
-static int
-sd_varlink_server_listen_name(sd_varlink_server *s, const char *name)
-{
-  _cleanup_(strv_freep) char **names = NULL;
-  int r, n = 0;
-
-  /* Adds all passed fds marked as "name" to our varlink server. These fds can either refer to a
-   * listening socket or to a connection socket.
-   *
-   * See https://varlink.org/#activation for the environment variables this is backed by and the
-   * recommended "varlink" identifier in $LISTEN_FDNAMES. */
-
-  r = sd_listen_fds_with_names(/* unset_environment= */ false, &names);
-  if (r < 0)
-    return r;
-
-  for (int i = 0; i < r; i++) {
-    int b, fd;
-    socklen_t l = sizeof(b);
-
-    if (strcmp(names[i], name) != 0)
-      continue;
-
-    fd = SD_LISTEN_FDS_START + i;
-
-    if (getsockopt(fd, SOL_SOCKET, SO_ACCEPTCONN, &b, &l) < 0)
-      return -errno;
-
-    if (b) /* Listening socket? */
-      r = sd_varlink_server_listen_fd(s, fd);
-    else /* Otherwise assume connection socket */
-      r = sd_varlink_server_add_connection(s, fd, NULL);
-    if (r < 0)
-      return r;
-
-    n++;
-  }
-
-  return n;
-}
-#endif
-
-static int
-init_varlink_server(sd_varlink_server **varlink_server, int flags,
-		    sd_event *event, const char *name)
-{
-  int r;
-
-  r = sd_varlink_server_new (varlink_server, flags);
-  if (r < 0)
-    {
-      log_msg (LOG_ERR, "Failed to allocate varlink server: %s",
-	       strerror (-r));
-      return r;
-    }
-
-  r = sd_varlink_server_set_description (*varlink_server, "wtmpdbd");
-  if (r < 0)
-    {
-      log_msg (LOG_ERR, "Failed to set varlink server description: %s",
-	       strerror (-r));
-      return r;
-    }
-
-  r = sd_varlink_server_add_interface (*varlink_server, &vl_interface_org_openSUSE_wtmpdb);
-  if (r < 0)
-    {
-      log_msg(LOG_ERR, "Failed to add %s interface: %s", name, strerror(-r));
-      return r;
-    }
-
-  r = sd_varlink_server_set_exit_on_idle (*varlink_server, socket_activation);
-  if (r < 0)
-    return r;
-
-  r = sd_varlink_server_set_info (*varlink_server, NULL, PACKAGE" (wtmpdbd)",
-				  VERSION, "https://github.com/thkukuk/wtmpdb");
-  if (r < 0)
-    return r;
-
-  sd_varlink_server_set_userdata (*varlink_server, event);
-
-  r = sd_varlink_server_attach_event (*varlink_server, event, 0);
-  if (r < 0)
-    {
-      log_msg (LOG_ERR, "Failed to attach %s to event: %s",
-	       name, strerror (-r));
-      return r;
-    }
-
-  r = sd_varlink_server_listen_name (*varlink_server, name);
-  if (r < 0)
-    {
-      log_msg (LOG_ERR, "Failed to listen to %s events: %s",
-	       name, strerror (-r));
-      return r;
-    }
-
-  return 0;
-}
-
 static int
 run_varlink (void)
 {
   int r;
   _cleanup_(sd_event_unrefp) sd_event *event = NULL;
-  _cleanup_(sd_varlink_server_unrefp) sd_varlink_server *varlink_reader = NULL;
-  _cleanup_(sd_varlink_server_unrefp) sd_varlink_server *varlink_writer = NULL;
+  _cleanup_(sd_varlink_server_unrefp) sd_varlink_server *varlink_server = NULL;
 
   r = mkdir_p(_VARLINK_WTMPDB_SOCKET_DIR, 0755);
   if (r < 0)
@@ -745,35 +680,45 @@ run_varlink (void)
       return r;
     }
 
-  r = init_varlink_server(&varlink_reader,
-			  SD_VARLINK_SERVER_ACCOUNT_UID|SD_VARLINK_SERVER_INHERIT_USERDATA,
-			  event, "varlink-reader");
-  if (r < 0)
-    return r;
-
-  r = sd_varlink_server_bind_method_many (varlink_reader,
-					  "org.openSUSE.wtmpdb.GetBootTime", vl_method_get_boottime,
-					  "org.openSUSE.wtmpdb.GetID",       vl_method_get_id,
-					  "org.openSUSE.wtmpdb.ReadAll",     vl_method_read_all,
-					  "org.openSUSE.wtmpdb.Ping",        vl_method_ping);
+  r = sd_varlink_server_new (&varlink_server, SD_VARLINK_SERVER_ACCOUNT_UID|SD_VARLINK_SERVER_INHERIT_USERDATA);
   if (r < 0)
     {
-      log_msg(LOG_ERR, "Failed to bind Varlink methods: %s",
-	      strerror(-r));
+      log_msg (LOG_ERR, "Failed to allocate varlink server: %s",
+	       strerror (-r));
       return r;
     }
 
-  r = init_varlink_server(&varlink_writer, (debug_flag?0:SD_VARLINK_SERVER_ROOT_ONLY)|SD_VARLINK_SERVER_ACCOUNT_UID|SD_VARLINK_SERVER_INHERIT_USERDATA, event, "varlink-writer");
+  r = sd_varlink_server_set_description (varlink_server, "wtmpdbd");
+  if (r < 0)
+    {
+      log_msg (LOG_ERR, "Failed to set varlink server description: %s",
+	       strerror (-r));
+      return r;
+    }
+
+  r = sd_varlink_server_set_info (varlink_server, NULL, PACKAGE" (wtmpdbd)",
+				  VERSION, "https://github.com/thkukuk/wtmpdb");
   if (r < 0)
     return r;
 
-  r = sd_varlink_server_bind_method_many (varlink_writer,
+  r = sd_varlink_server_add_interface (varlink_server, &vl_interface_org_openSUSE_wtmpdb);
+  if (r < 0)
+    {
+      log_msg(LOG_ERR, "Failed to add interface: %s", strerror(-r));
+      return r;
+    }
+
+  r = sd_varlink_server_bind_method_many (varlink_server,
+					  "org.openSUSE.wtmpdb.GetBootTime",    vl_method_get_boottime,
+					  "org.openSUSE.wtmpdb.GetEnvironment", vl_method_get_environment,
+					  "org.openSUSE.wtmpdb.GetID",          vl_method_get_id,
 					  "org.openSUSE.wtmpdb.Login",          vl_method_login,
 					  "org.openSUSE.wtmpdb.Logout",         vl_method_logout,
+					  "org.openSUSE.wtmpdb.Ping",           vl_method_ping,
+					  "org.openSUSE.wtmpdb.Quit",           vl_method_quit,
+					  "org.openSUSE.wtmpdb.ReadAll",        vl_method_read_all,
 					  "org.openSUSE.wtmpdb.Rotate",         vl_method_rotate,
-					  "org.openSUSE.wtmpdb.SetLogLevel",    vl_method_set_log_level,
-					  "org.openSUSE.wtmpdb.GetEnvironment", vl_method_get_environment,
-					  "org.openSUSE.wtmpdb.Quit",           vl_method_quit);
+					  "org.openSUSE.wtmpdb.SetLogLevel",    vl_method_set_log_level);
   if (r < 0)
     {
       log_msg(LOG_ERR, "Failed to bind Varlink methods: %s",
@@ -781,19 +726,35 @@ run_varlink (void)
       return r;
     }
 
-  if (!socket_activation)
-    {
-      r = sd_varlink_server_listen_address(varlink_reader, _VARLINK_WTMPDB_SOCKET_READER, 0666);
-      if (r < 0)
-	{
-	  log_msg (LOG_ERR, "Failed to bind to Varlink socket (reader): %s", strerror (-r));
-	  return r;
-	}
+  sd_varlink_server_set_userdata (varlink_server, event);
 
-      r = sd_varlink_server_listen_address(varlink_writer, _VARLINK_WTMPDB_SOCKET_WRITER, 0600);
+  r = sd_varlink_server_attach_event (varlink_server, event, SD_EVENT_PRIORITY_NORMAL);
+  if (r < 0)
+    {
+      log_msg (LOG_ERR, "Failed to attach to event: %s", strerror (-r));
+      return r;
+    }
+
+  r = sd_varlink_server_listen_auto (varlink_server);
+  if (r < 0)
+    {
+      log_msg (LOG_ERR, "Failed to listens: %s", strerror (-r));
+      return r;
+    }
+
+
+  if (socket_activation)
+    {
+      r = sd_varlink_server_set_exit_on_idle (varlink_server, true);
+      if (r < 0)
+	return r;
+    }
+  else
+    {
+      r = sd_varlink_server_listen_address(varlink_server, _VARLINK_WTMPDB_SOCKET, 0666);
       if (r < 0)
 	{
-	  log_msg (LOG_ERR, "Failed to bind to Varlink socket (writer): %s", strerror (-r));
+	  log_msg (LOG_ERR, "Failed to bind to Varlink socket: %s", strerror (-r));
 	  return r;
 	}
     }

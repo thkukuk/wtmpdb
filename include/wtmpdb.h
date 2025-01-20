@@ -33,8 +33,7 @@
 #define _PATH_WTMPDB "/var/lib/wtmpdb/wtmp.db"
 
 #define _VARLINK_WTMPDB_SOCKET_DIR "/run/wtmpdb"
-#define _VARLINK_WTMPDB_SOCKET_WRITER _VARLINK_WTMPDB_SOCKET_DIR"/writer.socket"
-#define _VARLINK_WTMPDB_SOCKET_READER _VARLINK_WTMPDB_SOCKET_DIR"/reader.socket"
+#define _VARLINK_WTMPDB_SOCKET _VARLINK_WTMPDB_SOCKET_DIR"/socket"
 
 #define EMPTY           0  /* No valid user accounting information.  */
 #define BOOT_TIME       1  /* Time of system boot.  */
