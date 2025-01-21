@@ -657,6 +657,37 @@ announce_stopping (void)
     log_msg (LOG_ERR, "sd_notify(STOPPING) failed: %s", strerror(-r));
 }
 
+/* event loop which quits after 30 seconds idle time */
+#define DEFAULT_EXIT_USEC (30*USEC_PER_SEC)
+
+static int
+varlink_event_loop_with_idle(sd_event *e, sd_varlink_server *s)
+{
+  int r, code;
+
+  for (;;)
+    {
+      r = sd_event_get_state(e);
+      if (r < 0)
+	return r;
+      if (r == SD_EVENT_FINISHED)
+	break;
+
+      r = sd_event_run(e, DEFAULT_EXIT_USEC);
+      if (r < 0)
+	return r;
+
+      if (r == 0 && (sd_varlink_server_current_connections(s) == 0))
+	sd_event_exit(e, 0);
+    }
+
+  r = sd_event_get_exit_code(e, &code);
+  if (r < 0)
+    return r;
+
+  return code;
+}
+
 static int
 run_varlink (void)
 {
@@ -743,13 +774,7 @@ run_varlink (void)
     }
 
 
-  if (socket_activation)
-    {
-      r = sd_varlink_server_set_exit_on_idle (varlink_server, true);
-      if (r < 0)
-	return r;
-    }
-  else
+  if (!socket_activation)
     {
       r = sd_varlink_server_listen_address(varlink_server, _VARLINK_WTMPDB_SOCKET, 0666);
       if (r < 0)
@@ -760,7 +785,10 @@ run_varlink (void)
     }
 
   announce_ready();
-  r = sd_event_loop (event);
+  if (socket_activation)
+    r = varlink_event_loop_with_idle(event, varlink_server);
+  else
+    r = sd_event_loop(event);
   announce_stopping();
 
   return r;
