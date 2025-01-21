@@ -1,6 +1,6 @@
 //SPDX-License-Identifier: GPL-2.0-or-later
 
-/* Copyright (c) 2024 Thorsten Kukuk
+/* Copyright (c) 2024, 2025 Thorsten Kukuk
    Author: Thorsten Kukuk <kukuk@suse.com>
 
    This program is free software; you can redistribute it and/or modify
@@ -34,14 +34,22 @@
 
 #include "varlink-org.openSUSE.wtmpdb.h"
 
-static int verbose_flag = 0;
-static int debug_flag = 0;
+static int log_level = LOG_WARNING;
 static int socket_activation = false;
+
+static void
+set_log_level (int level)
+{
+  log_level = level;
+}
 
 static void
 log_msg (int priority, const char *fmt, ...)
 {
   static int is_tty = -1;
+
+  if (priority > log_level)
+    return;
 
   if (is_tty == -1)
     is_tty = isatty (STDOUT_FILENO);
@@ -50,9 +58,9 @@ log_msg (int priority, const char *fmt, ...)
 
   va_start (ap, fmt);
 
-  if (is_tty || debug_flag)
+  if (is_tty)
     {
-      if (priority == LOG_ERR)
+      if (priority <= LOG_ERR)
         {
           vfprintf (stderr, fmt, ap);
           fputc ('\n', stderr);
@@ -76,8 +84,7 @@ vl_method_ping(sd_varlink *link, sd_json_variant *parameters,
 {
   int r;
 
-  if (verbose_flag)
-    log_msg (LOG_INFO, "Varlink method \"Ping\" called...");
+  log_msg (LOG_INFO, "Varlink method \"Ping\" called...");
 
   r = sd_varlink_dispatch(link, parameters, NULL, NULL);
   if (r != 0)
@@ -98,15 +105,13 @@ vl_method_set_log_level(sd_varlink *link, sd_json_variant *parameters,
 
   int r, level;
 
-  if (verbose_flag)
-    log_msg(LOG_INFO, "Varlink method \"SetLogLevel\" called...");
+  log_msg(LOG_INFO, "Varlink method \"SetLogLevel\" called...");
 
   r = sd_varlink_dispatch(link, parameters, dispatch_table, &level);
   if (r != 0)
     return r;
 
-  if (debug_flag)
-    log_msg(LOG_DEBUG, "Log level %i requested", level);
+  log_msg(LOG_DEBUG, "Log level %i requested", level);
 
   uid_t peer_uid;
   r = sd_varlink_get_peer_uid(link, &peer_uid);
@@ -121,18 +126,9 @@ vl_method_set_log_level(sd_varlink *link, sd_json_variant *parameters,
       return sd_varlink_error(link, SD_VARLINK_ERROR_PERMISSION_DENIED, parameters);
     }
 
-  if (level >= LOG_DEBUG)
-    debug_flag = 1;
-  else
-    debug_flag = 0;
+  set_log_level(level);
 
-  if (level >= LOG_INFO)
-    verbose_flag = 1;
-  else
-    verbose_flag = 0;
-
-  if (verbose_flag)
-    log_msg (LOG_INFO, "New log settings: debug=%i, verbose=%i", debug_flag, verbose_flag);
+  log_msg (LOG_INFO, "New log setting: level=%i", level);
 
   return sd_varlink_reply(link, NULL);
 }
@@ -144,8 +140,7 @@ vl_method_get_environment(sd_varlink *link, sd_json_variant *parameters,
 {
   int r;
 
-  if (verbose_flag)
-    log_msg (LOG_INFO, "Varlink method \"GetEnvironment\" called...");
+  log_msg (LOG_INFO, "Varlink method \"GetEnvironment\" called...");
 
   r = sd_varlink_dispatch(link, parameters, NULL, NULL);
   if (r != 0)
@@ -226,8 +221,7 @@ vl_method_login(sd_varlink *link, sd_json_variant *parameters,
   int64_t id = -1;
   int r;
 
-  if (verbose_flag)
-    log_msg (LOG_INFO, "Varlink method \"Login\" called...");
+  log_msg (LOG_INFO, "Varlink method \"Login\" called...");
 
   r = sd_varlink_dispatch(link, parameters, dispatch_table, &p);
   if (r != 0)
@@ -236,11 +230,8 @@ vl_method_login(sd_varlink *link, sd_json_variant *parameters,
       return r;
     }
 
-  if (debug_flag)
-    {
-      log_msg(LOG_DEBUG, "Requested login record: %i, %s, %li, %s, %s, %s",
-	      p.type, p.user, p.usec_login, p.tty, p.rhost, p.service);
-    }
+  log_msg(LOG_DEBUG, "Requested login record: %i, %s, %li, %s, %s, %s",
+	  p.type, p.user, p.usec_login, p.tty, p.rhost, p.service);
 
   uid_t peer_uid;
   r = sd_varlink_get_peer_uid(link, &peer_uid);
@@ -287,8 +278,7 @@ vl_method_logout(sd_varlink *link, sd_json_variant *parameters,
   int64_t id = -1;
   int r;
 
-  if (verbose_flag)
-    log_msg (LOG_INFO, "Varlink method \"Logout\" called...");
+  log_msg (LOG_INFO, "Varlink method \"Logout\" called...");
 
   r = sd_varlink_dispatch(link, parameters, dispatch_table, &p);
   if (r != 0)
@@ -297,8 +287,7 @@ vl_method_logout(sd_varlink *link, sd_json_variant *parameters,
       return r;
     }
 
-  if (debug_flag)
-    log_msg(LOG_DEBUG, "Logout for entry '%li' at time '%lu' requested", p.id, p.usec_logout);
+  log_msg(LOG_DEBUG, "Logout for entry '%li' at time '%lu' requested", p.id, p.usec_logout);
 
   uid_t peer_uid;
   r = sd_varlink_get_peer_uid(link, &peer_uid);
@@ -353,8 +342,7 @@ vl_method_get_id(sd_varlink *link, sd_json_variant *parameters,
   int64_t id = -1;
   int r;
 
-  if (verbose_flag)
-    log_msg (LOG_INFO, "Varlink method \"GetID\" called...");
+  log_msg (LOG_INFO, "Varlink method \"GetID\" called...");
 
   r = sd_varlink_dispatch(link, parameters, dispatch_table, &p);
   if (r != 0)
@@ -363,8 +351,7 @@ vl_method_get_id(sd_varlink *link, sd_json_variant *parameters,
       return r;
     }
 
-  if (debug_flag)
-    log_msg(LOG_DEBUG, "ID for entry on tty '%s' requested", p.tty);
+  log_msg(LOG_DEBUG, "ID for entry on tty '%s' requested", p.tty);
 
   id = wtmpdb_get_id (_PATH_WTMPDB, p.tty, &error);
   if (id < 0 || error != NULL)
@@ -390,8 +377,7 @@ vl_method_get_boottime(sd_varlink *link, sd_json_variant *parameters,
   uint64_t boottime = 0;
   int r;
 
-  if (verbose_flag)
-    log_msg (LOG_INFO, "Varlink method \"GetBootTime\" called...");
+  log_msg (LOG_INFO, "Varlink method \"GetBootTime\" called...");
 
   r = sd_varlink_dispatch(link, parameters, dispatch_table, /* userdata= */ NULL);
   if (r != 0)
@@ -424,8 +410,7 @@ wtmpdb_cb_func (void *u, int argc, char **argv, char _unused_(**azColName))
   uint64_t logout_t = 0;
   int r;
 
-  if (debug_flag)
-    log_msg(LOG_DEBUG, "wtmpdb_cb_func called for ID %s", argv[0]);
+  log_msg(LOG_DEBUG, "wtmpdb_cb_func called for ID %s", argv[0]);
 
   if (argc != 8)
     {
@@ -460,9 +445,8 @@ wtmpdb_cb_func (void *u, int argc, char **argv, char _unused_(**azColName))
 	}
     }
 
-  if (debug_flag)
-    log_msg(LOG_DEBUG, "ID: %i, Type: %i, User: %s, Login: %lu, Logout: %lu, TTY: %s, RemoteHost: %s, Service: %s",
-	    id, type, user, login_t, logout_t, tty, host, service);
+  log_msg(LOG_DEBUG, "ID: %i, Type: %i, User: %s, Login: %lu, Logout: %lu, TTY: %s, RemoteHost: %s, Service: %s",
+	  id, type, user, login_t, logout_t, tty, host, service);
 
   r = sd_json_variant_append_arraybo(array,
 				     SD_JSON_BUILD_PAIR_INTEGER("ID", id),
@@ -496,8 +480,7 @@ vl_method_read_all(sd_varlink *link, sd_json_variant *parameters,
   _cleanup_(freep) char *error = NULL;
   int r;
 
-  if (verbose_flag)
-    log_msg (LOG_INFO, "Varlink method \"ReadAll\" called...");
+  log_msg (LOG_INFO, "Varlink method \"ReadAll\" called...");
 
   r = sd_varlink_dispatch(link, parameters, dispatch_table, /* userdata= */ NULL);
   if (r != 0)
@@ -538,8 +521,7 @@ vl_method_rotate(sd_varlink *link, sd_json_variant *parameters,
   _cleanup_(freep) char *error = NULL;
   int r;
 
-  if (verbose_flag)
-    log_msg (LOG_INFO, "Varlink method \"Rotate\" called...");
+  log_msg (LOG_INFO, "Varlink method \"Rotate\" called...");
 
   r = sd_varlink_dispatch(link, parameters, dispatch_table, &p);
   if (r != 0)
@@ -548,8 +530,7 @@ vl_method_rotate(sd_varlink *link, sd_json_variant *parameters,
       return r;
     }
 
-  if (debug_flag)
-    log_msg(LOG_DEBUG, "Rotate of database for entries older than '%i' days requested", p.days);
+  log_msg(LOG_DEBUG, "Rotate of database for entries older than '%i' days requested", p.days);
 
   uid_t peer_uid;
   r = sd_varlink_get_peer_uid(link, &peer_uid);
@@ -602,8 +583,7 @@ vl_method_quit (sd_varlink *link, sd_json_variant *parameters,
   sd_event *loop = userdata;
   int r;
 
-  if (verbose_flag)
-    log_msg (LOG_INFO, "Varlink method \"Quit\" called...");
+  log_msg (LOG_INFO, "Varlink method \"Quit\" called...");
 
   r = sd_varlink_dispatch (link, parameters, dispatch_table, /* userdata= */ NULL);
   if (r != 0)
@@ -834,15 +814,14 @@ main (int argc, char **argv)
 	  socket_activation = true;
 	  break;
         case 'd':
-          debug_flag = 1;
-	  verbose_flag = 1;
+	  set_log_level(LOG_DEBUG);
           break;
         case '?':
         case 'h':
           print_help ();
           return 0;
         case 'v':
-          verbose_flag = 1;
+	  set_log_level(LOG_INFO);
           break;
         case '\255':
           fprintf (stdout, "wtmpdbd (%s) %s\n", PACKAGE, VERSION);
@@ -862,8 +841,7 @@ main (int argc, char **argv)
       return 1;
     }
 
-  if (verbose_flag)
-    log_msg (LOG_INFO, "Starting wtmpdbd (%s) %s...", PACKAGE, VERSION);
+  log_msg (LOG_INFO, "Starting wtmpdbd (%s) %s...", PACKAGE, VERSION);
 
   int r = run_varlink ();
   if (r < 0)
@@ -872,8 +850,7 @@ main (int argc, char **argv)
       return -r;
     }
 
-  if (verbose_flag)
-    log_msg (LOG_INFO, "wtmpdbd stopped.");
+  log_msg (LOG_INFO, "wtmpdbd stopped.");
 
   return 0;
 }

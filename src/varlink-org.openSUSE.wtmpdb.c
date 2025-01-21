@@ -75,7 +75,7 @@ static SD_VARLINK_DEFINE_METHOD(
 
 static SD_VARLINK_DEFINE_METHOD(
                 SetLogLevel,
-                SD_VARLINK_FIELD_COMMENT("Set debug and verbose mode, using BSD syslog log level integers."),
+                SD_VARLINK_FIELD_COMMENT("The maximum log level, using BSD syslog log level integers."),
                 SD_VARLINK_DEFINE_INPUT(Level, SD_VARLINK_INT, SD_VARLINK_NULLABLE));
 
 static SD_VARLINK_DEFINE_METHOD(
