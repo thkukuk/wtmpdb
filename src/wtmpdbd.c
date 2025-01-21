@@ -38,7 +38,7 @@ static int log_level = LOG_WARNING;
 static int socket_activation = false;
 
 static void
-set_log_level (int level)
+set_max_log_level (int level)
 {
   log_level = level;
 }
@@ -126,7 +126,7 @@ vl_method_set_log_level(sd_varlink *link, sd_json_variant *parameters,
       return sd_varlink_error(link, SD_VARLINK_ERROR_PERMISSION_DENIED, parameters);
     }
 
-  set_log_level(level);
+  set_max_log_level(level);
 
   log_msg (LOG_INFO, "New log setting: level=%i", level);
 
@@ -814,14 +814,14 @@ main (int argc, char **argv)
 	  socket_activation = true;
 	  break;
         case 'd':
-	  set_log_level(LOG_DEBUG);
+	  set_max_log_level(LOG_DEBUG);
           break;
         case '?':
         case 'h':
           print_help ();
           return 0;
         case 'v':
-	  set_log_level(LOG_INFO);
+	  set_max_log_level(LOG_INFO);
           break;
         case '\255':
           fprintf (stdout, "wtmpdbd (%s) %s\n", PACKAGE, VERSION);
