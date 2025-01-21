@@ -1,9 +1,10 @@
 [Unit]
-Description=wtmpdb daemon (socket activation)
+Description=wtmpdb daemon socket
 Documentation=man:wtmpdbd(8)
 
 [Socket]
 ListenStream=/run/wtmpdb/socket
+FileDescriptorName=varlink
 SocketMode=0666
 DirectoryMode=0755
 
