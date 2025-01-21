@@ -1,0 +1,130 @@
+<refentry xmlns="http://docbook.org/ns/docbook" version="5.0" xml:id="wtmpdb">
+  <refmeta>
+    <refentrytitle>wtmpdbd.service</refentrytitle>
+    <manvolnum>8</manvolnum>
+    <refmiscinfo class="source">wtmpdb %version%</refmiscinfo>
+    <refmiscinfo class="manual">wtmpdbd</refmiscinfo>
+  </refmeta>
+
+  <refnamediv>
+    <refname>wtmpdbd.service</refname>
+    <refname>wtmpdbd.socket</refname>
+    <refname>wtmpdbd</refname>
+    <refpurpose>Daemon to control wtmpdb entries</refpurpose>
+  </refnamediv>
+
+  <refsynopsisdiv>
+    <cmdsynopsis sepchar=" ">
+      <command>wtmpdbd.service</command>
+    </cmdsynopsis>
+    <cmdsynopsis sepchar=" ">
+      <command>/usr/libexec/wtmpdbd</command>
+      <arg choice="opt" rep="repeat">
+       option
+      </arg>
+    </cmdsynopsis>
+  </refsynopsisdiv>
+
+  <refsect1>
+
+    <title>DESCRIPTION</title>
+
+    <para>
+      <command>wtmpdbd.service</command> is a system service that may be used
+      to add and read <citerefentry><refentrytitle>wtmpdb</refentrytitle><manvolnum>8</manvolnum>
+      </citerefentry> entries. It is automatically activated on request and
+      terminates itself when unused.
+    </para>
+  </refsect1>
+
+  <refsect1>
+    <title>OPTIONS</title>
+    <variablelist>
+      <varlistentry>
+        <term>
+          <option>-s, --socket</option>
+        </term>
+        <listitem>
+          <para>
+            Activation through socket.
+          </para>
+        </listitem>
+      </varlistentry>
+      <varlistentry>
+        <term>
+          <option>-d, --debug</option>
+        </term>
+        <listitem>
+          <para>
+	    Debug mode
+          </para>
+        </listitem>
+      </varlistentry>
+      <varlistentry>
+        <term>
+          <option>-v, --verbose</option>
+        </term>
+        <listitem>
+          <para>
+	    Verbose logging
+          </para>
+        </listitem>
+      </varlistentry>
+      <varlistentry>
+        <term>
+          <option>-h, --help</option>
+        </term>
+        <listitem>
+          <para>
+            Display help message and exit.
+          </para>
+        </listitem>
+      </varlistentry>
+      <varlistentry>
+        <term>
+          <option>-v, --version</option>
+        </term>
+        <listitem>
+          <para>
+            Print version number and exit.
+          </para>
+        </listitem>
+      </varlistentry>
+    </variablelist>
+  </refsect1>
+
+  <refsect1>
+    <title>FILES</title>
+    <variablelist>
+      <varlistentry>
+        <term>/run/wtmpdb/socket</term>
+        <listitem>
+          <para>Varlink socket for communication</para>
+        </listitem>
+      </varlistentry>
+      <varlistentry>
+        <term>/var/lib/wtmpdb/wtmpdb.db</term>
+        <listitem>
+          <para>Wtmpdb logging database file</para>
+        </listitem>
+      </varlistentry>
+    </variablelist>
+  </refsect1>
+
+  <refsect1>
+    <title>SEE ALSO</title>
+    <para>
+      <citerefentry>
+	<refentrytitle>wtmpdb</refentrytitle><manvolnum>8</manvolnum>
+      </citerefentry>,
+    </para>
+  </refsect1>
+
+  <refsect1>
+    <title>AUTHOR</title>
+    <para>
+      wtmpdb was written by Thorsten Kukuk &lt;kukuk@suse.com&gt;.
+    </para>
+  </refsect1>
+
+</refentry>
