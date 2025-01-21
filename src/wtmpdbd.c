@@ -777,13 +777,13 @@ run_varlink (void)
 static void
 print_help (void)
 {
-  log_msg (LOG_INFO, "wtmpdbd - manage wtmpdb");
+  printf("wtmpdbd - manage wtmpdb\n");
 
-  log_msg (LOG_INFO, "  -s,--socket    Activation through socket");
-  log_msg (LOG_INFO, "  -d,--debug     Debug mode, no changes done");
-  log_msg (LOG_INFO, "  -v,--verbose   Verbose logging");
-  log_msg (LOG_INFO, "  -?, --help     Give this help list");
-  log_msg (LOG_INFO, "      --version  Print program version");
+  printf("  -s, --socket   Activation through socket\n");
+  printf("  -d, --debug    Debug mode\n");
+  printf("  -v, --verbose  Verbose logging\n");
+  printf("  -?, --help     Give this help list\n");
+  printf("      --version  Print program version\n");
 }
 
 int
