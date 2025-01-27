@@ -610,7 +610,7 @@ usage (int retval)
   fputs ("  -F, --fulltimes     Display full times and dates\n", output);
   fputs ("  -i, --ip            Translate hostnames to IP addresses\n", output);
   fputs ("  -j, --json          Generate JSON output\n", output);
-  fputs ("  -n, --limit N       Display only first N entries\n", output);
+  fputs ("  -n, --limit N, -N   Display only first N entries\n", output);
   fputs ("  -p, --present TIME  Display who was present at TIME\n", output);
   fputs ("  -R, --nohostname    Don't display hostname\n", output);
   fputs ("  -S, --service       Display PAM service used to login\n", output);
@@ -737,10 +737,23 @@ main_last (int argc, char **argv)
   char *error = NULL;
   int c;
 
-  while ((c = getopt_long (argc, argv, "adf:Fijn:p:RSs:t:wx", longopts, NULL)) != -1)
+  while ((c = getopt_long (argc, argv, "0123456789adf:Fijn:p:RSs:t:wx",
+			   longopts, NULL)) != -1)
     {
       switch (c)
         {
+	case '0':
+	case '1':
+	case '2':
+	case '3':
+	case '4':
+	case '5':
+	case '6':
+	case '7':
+	case '8':
+	case '9':
+	  maxentries = maxentries * 10 + c - '0';
+	  break;
 	case 'a':
 	  hostlast = 1;
 	  break;
