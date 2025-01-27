@@ -115,6 +115,9 @@
 	      <term>
 		<option>-n, --limit</option> <replaceable>N</replaceable>
 	      </term>
+	      <term>
+		<option>-</option><replaceable>N</replaceable>
+	      </term>
 	      <listitem>
 		<para>
 		  Display only the first <replaceable>N</replaceable> entries.
