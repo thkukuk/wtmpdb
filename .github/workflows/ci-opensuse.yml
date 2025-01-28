@@ -13,13 +13,13 @@ jobs:
     - name: Install devel packages
       run: |
         zypper ref
-        zypper --non-interactive in --no-recommends meson gcc libeconf-devel systemd-devel sqlite3-devel audit-devel pam-devel docbook5-xsl-stylesheets
+        zypper --non-interactive in --no-recommends meson gcc libeconf-devel systemd-devel sqlite3-devel audit-devel pam-devel docbook5-xsl-stylesheets valgrind
 
     - name: Setup meson
-      run: meson setup build --auto-features=enabled -Db_sanitize=address,undefined
+      run: meson setup build --auto-features=enabled
 
     - name: Compile code
-      run: cd build && meson compile
+      run: meson compile -v -C build
 
     - name: Run tests
-      run: cd build && meson test --verbose --print-errorlogs
+      run: meson test -v -C build --wrap='valgrind --leak-check=full --show-leak-kinds=all --error-exitcode=1'
