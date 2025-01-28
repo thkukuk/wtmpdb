@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-2-Clause
 
-  Copyright (c) 2023, Thorsten Kukuk <kukuk@suse.com>
+  Copyright (c) 2024, 2025 Thorsten Kukuk <kukuk@suse.com>
 
   Redistribution and use in source and binary forms, with or without
   modification, are permitted provided that the following conditions are met:
@@ -69,10 +69,6 @@ main(void)
   if ((id = wtmpdb_login ("varlink", USER_PROCESS, user,
 			  login_t, tty, rhost, service, &error)) < 0)
     {
-      if (id == -ECONNREFUSED || id == -ENOENT ||
-	  id == -EACCES || id == -EPROTONOSUPPORT)
-	return 77;
-
       if (error)
         {
           fprintf (stderr, "wtmpdb_login: %s\n", error);
@@ -80,6 +76,11 @@ main(void)
         }
       else
 	fprintf (stderr, "wtmpdb_login failed (%li)\n", id);
+
+      if (id == -ECONNREFUSED || id == -ENOENT ||
+	  id == -EACCES || id == -EPROTONOSUPPORT)
+	return 77;
+
       return 1;
     }
   printf ("wtmpdb_login id: %li\n", id);
