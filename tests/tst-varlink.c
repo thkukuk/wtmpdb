@@ -60,6 +60,9 @@ main(void)
   uint64_t login_t;
   uint64_t logout_t;
 
+  if (getuid() != 0)
+    return 77;
+
   clock_gettime (CLOCK_REALTIME, &ts);
   login_t = wtmpdb_timespec2usec (ts);
 
