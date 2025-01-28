@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Install pam-devel
-      run: sudo apt-get install libpam0g-dev
+      run: sudo apt-get install libpam0g-dev libsqlite3-dev
     - uses: actions/checkout@v3
     - uses: BSFishy/meson-build@v1.0.3
       with:
