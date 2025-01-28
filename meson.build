@@ -94,39 +94,20 @@ tmpfilesdir = prefixdir / 'lib/tmpfiles.d'
 libpam = cc.find_library('pam')
 libsqlite3 = cc.find_library('sqlite3')
 
-want_audit = get_option('audit')
-if want_audit != 'false'
-        libaudit = dependency('audit', required : want_audit == 'true')
-        have_audit = libaudit.found()
-else
-        have_audit = false
-        libaudit = []
-endif
-conf.set10('HAVE_AUDIT', have_audit)
+libaudit = dependency('audit', required : get_option('audit'))
+conf.set10('HAVE_AUDIT', libaudit.found())
 
-want_wtmpdbd = get_option('wtmpdbd')
-if want_wtmpdbd != 'false'
-        libsystemd = dependency('libsystemd', version: '>= 257', required : want_wtmpdbd == 'true')
-        have_systemd257 = libsystemd.found()
-else
-        have_systemd257 = false
-        libsystemd = []
-endif
-conf.set10('WITH_WTMPDBD', have_systemd257)
+libsystemd = dependency('libsystemd', version: '>= 257', required : get_option('wtmpdbd'))
+conf.set10('WITH_WTMPDBD', libsystemd.found())
 
-want_systemd = get_option('systemd')
-if have_systemd257 == false
-  if want_systemd != 'false'
-          libsystemd = dependency('libsystemd', required : want_systemd == 'true')
-          have_systemd = libsystemd.found()
-  else
-          have_systemd = false
-          libsystemd = []
-  endif
+if libsystemd.found()
+          have_systemd257 = true
 else
-    have_systemd = true
+# for soft-reboot older libsystemd with sd_bus is good enough
+          have_systemd257 = false
+          libsystemd = dependency('libsystemd', required : get_option('systemd'))
 endif
-conf.set10('HAVE_SYSTEMD', have_systemd)
+conf.set10('HAVE_SYSTEMD', libsystemd.found())
 
 libwtmpdb_c = files('lib/libwtmpdb.c', 'lib/logwtmpdb.c', 'lib/sqlite.c', 'lib/varlink.c', 'lib/mkdir_p.c')
 libwtmpdb_map = 'lib/libwtmpdb.map'

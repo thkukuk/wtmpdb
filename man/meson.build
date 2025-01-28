@@ -1,6 +1,5 @@
-want_man = get_option('man')
-xsltproc_exe = find_program('xsltproc', required : want_man == 'true')
-want_man = want_man != 'false' and xsltproc_exe.found()
+xsltproc_exe = find_program('xsltproc', required : get_option('man'))
+want_man = (get_option('man').enabled() or get_option('man').auto()) and xsltproc_exe.found()
 xsltproc_flags = [
         '--nonet',
         '--xinclude',

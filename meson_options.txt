@@ -1,23 +1,18 @@
-option('wtmpdbd', type : 'combo', choices : ['auto', 'true', 'false'],
-       value : 'auto',
+option('wtmpdbd', type : 'feature', value : 'auto',
        description : 'build daemon with sd-varlink support')
 option('split-usr', type : 'combo', choices : ['auto', 'true', 'false'],
        description : '''/bin, /sbin aren't symlinks into /usr''')
 option('rootprefix', type : 'string',
        description : '''override the root prefix [default '/' if split-usr and '/usr' otherwise]''')
 option('rootlibdir', type : 'string',
-       description : '''[/usr]/lib/x86_64-linux-gnu or such''')
+       description : '''[/usr]/lib or such''')
 option('pamlibdir', type : 'string',
        description : 'directory for PAM modules')
-option('man', type : 'combo', choices : ['auto', 'true', 'false'],
-       value : 'auto',
+option('man', type : 'feature', value : 'auto',
        description : 'build and install man pages')
-option('audit', type : 'combo', choices : ['auto', 'true', 'false'],
-       value : 'auto',
+option('audit', type : 'feature', value : 'auto',
        description : 'libaudit support')
-option('systemd', type : 'combo', choices : ['auto', 'true', 'false'],
-       value : 'auto',
+option('systemd', type : 'feature', value : 'auto',
        description : 'systemd support to detect soft-reboots')
-option('compat-symlink', type : 'boolean',
-       value : false,
+option('compat-symlink', type : 'boolean', value : false,
        description : 'create last compat symlink')
