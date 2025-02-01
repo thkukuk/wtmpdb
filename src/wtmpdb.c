@@ -133,7 +133,7 @@ isipaddr (const char *string, int *addr_type,
 static int
 parse_time (const char *str, time_t *arg)
 {
-  struct tm res;
+  struct tm res = { 0 };
 
   if (strcmp (str, "today") == 0)
     {
