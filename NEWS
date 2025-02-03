@@ -1,3 +1,8 @@
+Version 0.71.0
+* Fix installation of all wtmpdbd man page variants
+* Accept classic 'last -N' form for max entries
+* Fix: zero struct tm before calling strptime()
+
 Version 0.70.0
 * wtmpdbd: Exit after 30 seconds of idle time in socket activation mode
 * wtmpdbd: add Ping, SetLogLevel and GetEnvironment as varlink method
