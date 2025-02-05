@@ -44,6 +44,10 @@
 #define NSEC_PER_USEC ((uint64_t) 1000ULL)
 #define USEC_PER_SEC  ((uint64_t) 1000000ULL)
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 extern int64_t logwtmpdb (const char *db_path, const char *tty,
 		          const char *name, const char *host,
 		          const char *service, char **error);
@@ -71,3 +75,7 @@ extern uint64_t wtmpdb_get_boottime (const char *db_path, char **error);
 extern int64_t wtmpdb_get_id (const char *db_path, const char *tty,
 			      char **error);
 extern uint64_t wtmpdb_timespec2usec (const struct timespec ts);
+
+#ifdef __cplusplus
+}
+#endif
