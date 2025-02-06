@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-2-Clause
 
-  Copyright (c) 2023, Thorsten Kukuk <kukuk@suse.com>
+  Copyright (c) 2023, 2025 Thorsten Kukuk <kukuk@suse.com>
 
   Redistribution and use in source and binary forms, with or without
   modification, are permitted provided that the following conditions are met:
@@ -34,6 +34,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include "basics.h"
 
 #include "wtmpdb.h"
 
@@ -98,6 +99,7 @@ count_entry (void *unused __attribute__((__unused__)),
 static int
 test_rotate (const char *db_path, const int days)
 {
+  int expected;
   char *error = NULL;
 
   counter = 0;
@@ -112,9 +114,10 @@ test_rotate (const char *db_path, const int days)
 	fprintf (stderr, "wtmpdb_read_all failed\n");
       return 1;
     }
-  if (counter != ((days-1) * 5))
+  expected = (days-1) * 5;
+  if (counter != expected)
     {
-      fprintf (stderr, "wtmpdb_read_all returned %d expected 5\n", counter);
+      fprintf (stderr, "wtmpdb_read_all returned %d expected %d\n", counter, expected);
       return 1;
     }
 
@@ -142,13 +145,35 @@ test_rotate (const char *db_path, const int days)
 	fprintf (stderr, "wtmpdb_read_all failed\n");
       return 1;
     }
-  if (counter != (days-2) * 5)
+  expected = (days-2) * 5;
+  if (counter != expected)
     {
-      fprintf (stderr, "wtmpdb_read_all returned %d expected 0\n", counter);
+      fprintf (stderr, "wtmpdb_read_all returned %d expected %d\n", counter, expected);
       return 1;
     }
 
   return 0;
+}
+
+static void
+remove_backup_db(int days)
+{
+  _cleanup_(freep) char *backup_path = NULL;
+  struct timespec ts_now;
+
+  clock_gettime (CLOCK_REALTIME, &ts_now);
+
+  time_t offset = ts_now.tv_sec - days * 86400;
+  struct tm *tm = localtime (&offset);
+  char date[10];
+  strftime (date, 10, "%Y%m%d", tm);
+
+  if (asprintf (&backup_path, "tst-login-logout_%s.db", date) < 0)
+    {
+      fprintf (stderr, "Out of memory");
+      return;
+    }
+  remove (backup_path);
 }
 
 int
@@ -188,20 +213,8 @@ main(void)
     return 1;
 
   /* cleanup */
-  struct timespec ts_now;
-  clock_gettime (CLOCK_REALTIME, &ts_now);
-  time_t offset = ts_now.tv_sec - 2 * 86400;
-  struct tm *tm = localtime (&offset);
-  char date[10];
-  strftime (date, 10, "%Y%m%d", tm);
-  char *backup_path = NULL;
-  if (asprintf (&backup_path, "tst-login-logout_%s.db", date) < 0)
-    {
-      fprintf (stderr, "Out of memory");
-      return 1;
-    }
-  remove (backup_path);
-  free (backup_path);
+  remove_backup_db(2);
+  remove_backup_db(3);
   remove (db_path);
 
   return 0;
