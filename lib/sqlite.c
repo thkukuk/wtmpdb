@@ -526,11 +526,11 @@ sqlite_rotate(const char *db_path, const int days, char **wtmpdb_name,
   sqlite3 *db_src;
   sqlite3 *db_dest;
   uint64_t counter = 0;
-  struct timespec ts_now;
-  clock_gettime (CLOCK_REALTIME, &ts_now);
-  time_t offset = ts_now.tv_sec - days * 86400;
-  struct tm *tm = localtime (&offset);
-  uint64_t login_t = offset * USEC_PER_SEC;
+  struct timespec threshold;
+  clock_gettime (CLOCK_REALTIME, &threshold);
+  threshold.tv_sec -= days * 86400;
+  struct tm *tm = localtime (&threshold.tv_sec);
+  uint64_t login_t = wtmpdb_timespec2usec (threshold);
   char date[10];
   strftime (date, 10, "%Y%m%d", tm);
   char *dest_path = NULL;
