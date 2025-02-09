@@ -184,17 +184,6 @@ main(void)
   /* make sure there is no old stuff flying around. The backup file is not so important. */
   remove (db_path);
 
-  if (test_args (db_path, "user1", "test-tty", "localhost", NULL, 4) != 0)
-    return 1;
-  if (test_args (db_path, "user2", NULL, NULL, NULL, 4) != 0)
-    return 1;
-  if (test_args (db_path, "user3", NULL, NULL, NULL, 4) != 0)
-    return 1;
-  if (test_args (db_path, "user4", "test-tty", NULL, NULL, 4) != 0)
-    return 1;
-  if (test_args (db_path, "user5", NULL, "localhost", NULL, 4) != 0)
-    return 1;
-
   if (test_args (db_path, "user1", "test-tty", "localhost", NULL, 3) != 0)
     return 1;
   if (test_args (db_path, "user2", NULL, NULL, NULL, 3) != 0)
@@ -204,6 +193,17 @@ main(void)
   if (test_args (db_path, "user4", "test-tty", NULL, NULL, 3) != 0)
     return 1;
   if (test_args (db_path, "user5", NULL, "localhost", NULL, 3) != 0)
+    return 1;
+
+  if (test_args (db_path, "user1", "test-tty", "localhost", NULL, 2) != 0)
+    return 1;
+  if (test_args (db_path, "user2", NULL, NULL, NULL, 2) != 0)
+    return 1;
+  if (test_args (db_path, "user3", NULL, NULL, NULL, 2) != 0)
+    return 1;
+  if (test_args (db_path, "user4", "test-tty", NULL, NULL, 2) != 0)
+    return 1;
+  if (test_args (db_path, "user5", NULL, "localhost", NULL, 2) != 0)
     return 1;
 
   if (test_rotate (db_path, 3) != 0)
