@@ -30,7 +30,7 @@ The package constists of a library, PAM module, a commandline interface and an o
 * `wtmpdb` is used to add reboot and shutdown entries and to display existing entries (like `last`).
 * `wtmpdbd` is used to manage the database in a secure way.
 
-By default the database will be written as `/var/lib/wtmpdb/wtmpdb.db`.
+By default the database will be written as `/var/lib/wtmpdb/wtmp.db`.
 
 ## Configuration
 
