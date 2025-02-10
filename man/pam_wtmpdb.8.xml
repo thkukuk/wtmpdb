@@ -36,7 +36,7 @@
     <para>
       pam_wtmpdb is a PAM module to record the login and logout
       information of the user. The module uses
-      <filename>/var/lib/wtmpdb/wtmpdb.db</filename> as database
+      <filename>/var/lib/wtmpdb/wtmp.db</filename> as database
       file to store all information.
     </para>
     <para>
@@ -90,7 +90,7 @@
         <listitem>
           <para>
             Use <option>file</option> instead of
-            <filename>/var/lib/wtmpdb/wtmpdb.db</filename>.
+            <filename>/var/lib/wtmpdb/wtmp.db</filename>.
           </para>
         </listitem>
       </varlistentry>
@@ -166,7 +166,7 @@
     <title>FILES</title>
     <variablelist>
       <varlistentry>
-        <term>/var/lib/wtmpdb/wtmpdb.db</term>
+        <term>/var/lib/wtmpdb/wtmp.db</term>
         <listitem>
           <para>Wtmpdb logging database file</para>
         </listitem>

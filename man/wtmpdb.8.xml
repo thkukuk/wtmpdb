@@ -344,7 +344,7 @@
     <title>FILES</title>
     <variablelist>
       <varlistentry>
-        <term>/var/lib/wtmpdb/wtmpdb.db</term>
+        <term>/var/lib/wtmpdb/wtmp.db</term>
         <listitem>
           <para>Wtmpdb logging database file</para>
         </listitem>
