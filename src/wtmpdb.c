@@ -50,6 +50,7 @@
 #define _cleanup_(f) __attribute__((cleanup(f)))
 #endif
 
+#include "import.h"
 #include "wtmpdb.h"
 
 static char *wtmpdb_path = NULL;
@@ -602,7 +603,7 @@ usage (int retval)
   FILE *output = (retval != EXIT_SUCCESS) ? stderr : stdout;
 
   fprintf (output, "Usage: wtmpdb [command] [options]\n");
-  fputs ("Commands: last, boot, boottime, rotate, shutdown\n\n", output);
+  fputs ("Commands: last, boot, boottime, rotate, shutdown, import\n\n", output);
   fputs ("Options for last:\n", output);
   fputs ("  -a, --hostlast      Display hostnames as last entry\n", output);
   fputs ("  -d, --dns           Translate IP addresses into a hostname\n", output);
@@ -641,6 +642,11 @@ usage (int retval)
 
   fputs ("Options for shutdown (writes shutdown time to wtmpdb):\n", output);
   fputs ("  -f, --file FILE     Use FILE as wtmpdb database\n", output);
+  fputs ("\n", output);
+
+  fputs ("Options for import (imports legacy wtmp logs):\n", output);
+  fputs ("  -f, --file FILE     Use FILE as wtmpdb database\n", output);
+  fputs ("  logs...             Legacy log files to import\n", output);
   fputs ("\n", output);
 
   fputs ("Generic options:\n", output);
@@ -1179,6 +1185,41 @@ main_shutdown (int argc, char **argv)
   return EXIT_SUCCESS;
 }
 
+static int
+main_import (int argc, char **argv)
+{
+  struct option const longopts[] = {
+    {"file", required_argument, NULL, 'f'},
+    {NULL, 0, NULL, '\0'}
+  };
+  int c;
+
+  while ((c = getopt_long (argc, argv, "f:", longopts, NULL)) != -1)
+    {
+      switch (c)
+        {
+        case 'f':
+          wtmpdb_path = optarg;
+          break;
+        default:
+          usage (EXIT_FAILURE);
+          break;
+        }
+    }
+
+  if (argc == optind)
+    {
+      fprintf (stderr, "No files specified to import.\n");
+      usage (EXIT_FAILURE);
+    }
+
+  for (; optind < argc; optind++)
+    if (import_wtmp_file (wtmpdb_path, argv[optind]) == -1)
+      return EXIT_FAILURE;
+
+  return EXIT_SUCCESS;
+}
+
 int
 main (int argc, char **argv)
 {
@@ -1203,6 +1244,8 @@ main (int argc, char **argv)
     return main_boottime (--argc, ++argv);
   else if (strcmp (argv[1], "rotate") == 0)
     return main_rotate (--argc, ++argv);
+  else if (strcmp (argv[1], "import") == 0)
+    return main_import (--argc, ++argv);
 
   while ((c = getopt_long (argc, argv, "hv", longopts, NULL)) != -1)
     {

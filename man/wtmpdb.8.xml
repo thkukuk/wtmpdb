@@ -314,6 +314,30 @@
 	</listitem>
       </varlistentry>
       <varlistentry>
+        <term><command>import</command>
+	  <optional><replaceable>option</replaceable>…</optional>
+	  <replaceable>file</replaceable>…
+	</term>
+	<listitem>
+          <para>
+	    <command>wtmpdb import</command> imports legacy wtmp log
+	    files to the <filename>/var/lib/wtmpdb/wtmp.db</filename>
+	    database.
+	  </para>
+	  <title>import options</title>
+	  <varlistentry>
+	    <term>
+	      <option>-f, --file</option> <replaceable>FILE</replaceable>
+	    </term>
+	    <listitem>
+	      <para>
+		Use <replaceable>FILE</replaceable> as wtmpdb database.
+	      </para>
+	    </listitem>
+	  </varlistentry>
+	</listitem>
+      </varlistentry>
+      <varlistentry>
 	<term>global options</term>
 	<title>global options</title>
 	<varlistentry>

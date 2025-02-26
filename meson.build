@@ -151,7 +151,7 @@ pam_wtmpdb = shared_library(
   install_dir : pamlibdir
 )
 
-wtmpdb_c = ['src/wtmpdb.c']
+wtmpdb_c = ['src/wtmpdb.c', 'src/import.c']
 wtmpdbd_c = ['src/wtmpdbd.c', 'src/varlink-org.openSUSE.wtmpdb.c', 'lib/mkdir_p.c']
 
 if have_systemd257
