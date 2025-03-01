@@ -995,7 +995,6 @@ soft_reboots_count (void)
 
   if (sd_bus_open_system (&bus) < 0)
     {
-      fprintf (stderr, "Error: cannot open dbus");
       return -1;
     }
 
