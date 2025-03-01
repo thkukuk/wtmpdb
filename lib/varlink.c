@@ -29,6 +29,7 @@
 
 #if WITH_WTMPDBD
 
+#include <inttypes.h>
 #include <stdlib.h>
 #include <stdbool.h>
 #include <systemd/sd-varlink.h>
@@ -629,16 +630,16 @@ varlink_read_all (int (*cb_func)(void *unused, int argc, char **argv,
 	}
 
       char *ret[8];
-      if (asprintf (&ret[0], "%li", e.id) < 0)
+      if (asprintf (&ret[0], "%" PRId64, e.id) < 0)
 	return -ENOMEM;
       if (asprintf (&ret[1], "%i", e.type) < 0)
 	return -ENOMEM;
       ret[2] = e.user;
-      if (asprintf (&ret[3], "%lu", e.login) < 0)
+      if (asprintf (&ret[3], "%" PRIu64, e.login) < 0)
 	return -ENOMEM;
       if (e.logout > 0)
 	{
-	  if (asprintf (&ret[4], "%lu", e.logout) < 0)
+	  if (asprintf (&ret[4], "%" PRIu64, e.logout) < 0)
 	    return -ENOMEM;
 	}
       else

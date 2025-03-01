@@ -141,7 +141,9 @@ import_wtmp_file (const char *db_path,
 {
   struct stat statbuf;
   char *error = NULL;
-  int64_t entries;
+  const ssize_t record_sz = sizeof(struct utmp);
+  ssize_t file_sz;
+  ssize_t entries;
   void *data;
   int fd;
   int rc;
@@ -163,15 +165,16 @@ import_wtmp_file (const char *db_path,
       return -1;
     }
 
-  entries = statbuf.st_size / sizeof (struct utmp);
-  if (entries * (off_t) sizeof (struct utmp) != statbuf.st_size)
+  file_sz = statbuf.st_size;
+  entries = file_sz / record_sz;
+  if (entries * record_sz != file_sz)
     {
       fprintf (stderr, "Warning: utmp-format file is not a multiple of "
 		       "sizeof(struct utmp) in length: %zd spare bytes, %s\n",
-	       statbuf.st_size - entries * sizeof (struct utmp), file);
+	       file_sz - entries * record_sz, file);
     }
 
-  data = mmap (NULL, statbuf.st_size, PROT_READ, MAP_SHARED, fd, 0);
+  data = mmap (NULL, file_sz, PROT_READ, MAP_SHARED, fd, 0);
   if (data == MAP_FAILED)
     {
       fprintf (stderr, "Could not map file to import: %s\n", strerror (errno));
@@ -186,7 +189,7 @@ import_wtmp_file (const char *db_path,
       free(error);
     }
 
-  munmap (data, statbuf.st_size);
+  munmap (data, file_sz);
   close (fd);
   return rc;
 }

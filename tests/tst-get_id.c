@@ -29,6 +29,7 @@
    Try to get the ID for an non-existing tty
 */
 
+#include <inttypes.h>
 #include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -50,12 +51,12 @@ main(void)
 
   if (id == -2)
     {
-       printf ("wtmpdb_get_id returned expected: %li, '%s'\n",
+       printf ("wtmpdb_get_id returned expected: %" PRId64 ", '%s'\n",
                id, error);
        return 0;
     }
 
-  fprintf (stderr, "wtmpdb_get_id returns '%ld' with error message: %s\n",
+  fprintf (stderr, "wtmpdb_get_id returns '%" PRId64 "' with error message: %s\n",
 	   id, error);
   return 1;
 }
