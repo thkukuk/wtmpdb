@@ -29,6 +29,7 @@
    Create login entry, search for ID, add logout time, get boottime.
 */
 
+#include <inttypes.h>
 #include <time.h>
 #include <errno.h>
 #include <stdio.h>
@@ -75,7 +76,7 @@ main(void)
           free (error);
         }
       else
-	fprintf (stderr, "wtmpdb_login failed (%li)\n", id);
+	fprintf (stderr, "wtmpdb_login failed (%" PRId64 ")\n", id);
 
       if (id == -ECONNREFUSED || id == -ENOENT ||
 	  id == -EACCES || id == -EPROTONOSUPPORT)
@@ -83,7 +84,7 @@ main(void)
 
       return 1;
     }
-  printf ("wtmpdb_login id: %li\n", id);
+  printf ("wtmpdb_login id: %" PRId64 "\n", id);
 
   /* wtmpdb_get_id should return the same ID as wtmpdb_login */
   int64_t newid;
@@ -98,11 +99,11 @@ main(void)
 	fprintf (stderr, "wtmpdb_get_id failed\n");
       return 1;
     }
-  printf ("wtmpdb_get_id: %li\n", newid);
+  printf ("wtmpdb_get_id: %" PRId64 "\n", newid);
 
   if (newid != id)
     {
-      fprintf (stderr, "IDs don't match: %li != %li\n", id, newid);
+      fprintf (stderr, "IDs don't match: %" PRId64 " != %" PRId64 "\n", id, newid);
       return 1;
     }
 
@@ -157,7 +158,7 @@ main(void)
   else if (entries == 0)
     printf ("Nothing to move for wtmpdb_rotate\n");
   else
-    printf ("wtmpdb_rotate moved %lu entries into %s\n", entries, backup);
+    printf ("wtmpdb_rotate moved %" PRIu64 " entries into %s\n", entries, backup);
 
   return 0;
 }
