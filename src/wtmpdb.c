@@ -1019,7 +1019,11 @@ main_boot (int argc, char **argv)
   struct timespec ts_now;
   struct timespec ts_boot;
   clock_gettime (CLOCK_REALTIME, &ts_now);
+#ifdef CLOCK_BOOTTIME
   clock_gettime (CLOCK_BOOTTIME, &ts_boot);
+#else
+  ts_boot = ts_now;
+#endif
   uint64_t time = wtmpdb_timespec2usec (diff_timespec(&ts_now, &ts_boot));
 #if HAVE_SYSTEMD
   struct timespec ts_empty = { .tv_sec = 0, .tv_nsec = 0 };
