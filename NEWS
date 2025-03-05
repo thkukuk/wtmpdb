@@ -1,3 +1,8 @@
+Version 0.72.0
+* Implement import function for old wtmp files
+* Fix rotate tests
+* Fixes for ix86
+
 Version 0.71.0
 * Fix installation of all wtmpdbd man page variants
 * Accept classic 'last -N' form for max entries
