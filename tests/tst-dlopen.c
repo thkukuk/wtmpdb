@@ -13,23 +13,25 @@
 
 #include <dlfcn.h>
 #include <stdio.h>
-#include <limits.h>
+#include <stdlib.h>
 #include <sys/stat.h>
+#include "basics.h"
 
 /* Simple program to see if dlopen() would succeed. */
 int main(int argc, char **argv)
 {
   int i;
+  int rc;
   struct stat st;
-  char buf[PATH_MAX];
+  _cleanup_(freep) char *buf = NULL;
 
   for (i = 1; i < argc; i++) {
     if (dlopen(argv[i], RTLD_NOW)) {
       fprintf(stdout, "dlopen() of \"%s\" succeeded.\n",
               argv[i]);
     } else {
-      snprintf(buf, sizeof(buf), "./%s", argv[i]);
-      if ((stat(buf, &st) == 0) && dlopen(buf, RTLD_NOW)) {
+      rc = asprintf(&buf, "./%s", argv[i]);
+      if (rc >= 0 && (stat(buf, &st) == 0) && dlopen(buf, RTLD_NOW)) {
         fprintf(stdout, "dlopen() of \"./%s\" "
                 "succeeded.\n", argv[i]);
       } else {
