@@ -734,7 +734,7 @@ main_last (int argc, char **argv)
     {"service", no_argument, NULL, 'S'},
     {"since", required_argument, NULL, 's'},
     {"system", no_argument, NULL, 'x'},
-    {"until", required_argument, NULL, 'u'},
+    {"until", required_argument, NULL, 't'},
     {"time-format", required_argument, NULL, TIMEFMT_VALUE},
     {"json", no_argument, NULL, 'j'},
     {NULL, 0, NULL, '\0'}
@@ -804,7 +804,7 @@ main_last (int argc, char **argv)
 	case 'S':
 	  noservice = 0;
 	  break;
-	case 'u':
+	case 't':
 	  if (parse_time (optarg, &until) < 0)
 	    {
 	      fprintf (stderr, "Invalid time value '%s'\n", optarg);
