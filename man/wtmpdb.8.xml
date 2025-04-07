@@ -219,10 +219,17 @@
 	  </variablelist>
 	  <para>
 	    <replaceable>TIME</replaceable> must be in the format
+	    <option>"YYYYMMDDHHMMSS"</option>,
 	    <option>"YYYY-MM-DD HH:MM:SS"</option>,
-	    <option>"YYYY-MM-DD"</option>, <option>"today"</option> or
-	    <option>"yesterday"</option> (time will be set to 00:00:00
-	    if not specified).
+	    <option>"YYYY-MM-DD HH:MM"</option>,
+	    <option>"YYYY-MM-DD"</option>,
+	    <option>"HH:MM:SS"</option>,
+	    <option>"HH:MM"</option>,
+	    <option>"now"</option>,
+	    <option>"today"</option>,
+	    <option>"yesterday"</option> or
+	    <option>"tomorrow"</option> (time will be set to 00:00:00
+	    if not specified; the date to today's).
 	  </para>
 	</listitem>
       </varlistentry>
