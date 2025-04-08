@@ -1,3 +1,9 @@
+Version 0.73.0
+* Expand accepted time format options (-p)
+* Use documented -t short option for last --until
+* Avoid PATH_MAX
+* hurd: compat for lack of CLOCK_BOOTTIME
+
 Version 0.72.0
 * Implement import function for old wtmp files
 * Fix rotate tests
