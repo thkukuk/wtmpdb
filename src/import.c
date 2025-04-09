@@ -114,7 +114,7 @@ import_utmp_records (const char *db_path,
 	    {
 	      if (v->ut_type == UTMP_USER_PROCESS &&
 		  ((u->ut_pid != 0 && v->ut_pid == u->ut_pid) ||
-		   (u->ut_pid == 0 && strncmp (v->ut_line, u->ut_line, UT_LINESIZE) == 0)))
+		   (strncmp (v->ut_line, u->ut_line, UT_LINESIZE) == 0)))
 		{
 		  id = id_map[v - utmp_data];
 		  if (id > 0)
