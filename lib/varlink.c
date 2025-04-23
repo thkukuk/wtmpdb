@@ -313,7 +313,7 @@ varlink_get_id (const char *tty, char **error)
 	  else
 	    *error = strdup(error_id);
 	}
-      if (strcmp(error_id, "org.openSUSE.rebootmgr.NoEntryFound") == 0)
+      if (strcmp(error_id, "org.openSUSE.wtmpdb.NoEntryFound") == 0)
 	return -ENOENT;
       else
 	return -EIO;
@@ -388,7 +388,7 @@ varlink_get_boottime (uint64_t *boottime, char **error)
 	  else
 	    *error = strdup(error_id);
 	}
-      if (strcmp(error_id, "org.openSUSE.rebootmgr.NoEntryFound") == 0)
+      if (strcmp(error_id, "org.openSUSE.wtmpdb.NoEntryFound") == 0)
 	return -ENOENT;
       else
 	return -EIO;

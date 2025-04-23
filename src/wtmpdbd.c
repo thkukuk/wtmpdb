@@ -250,7 +250,7 @@ vl_method_login(sd_varlink *link, sd_json_variant *parameters,
   if (id < 0 || error != NULL)
     {
       log_msg(LOG_ERR, "Get ID request from db failed: %s", error);
-      return sd_varlink_errorbo(link, "org.openSUSE.rebootmgr.InternalError",
+      return sd_varlink_errorbo(link, "org.openSUSE.wtmpdb.InternalError",
 				SD_JSON_BUILD_PAIR_STRING("ErrorMsg", error));
     }
 
@@ -307,7 +307,7 @@ vl_method_logout(sd_varlink *link, sd_json_variant *parameters,
     {
       /* let wtmpdb_logout return better error codes, e.g. not found vs real error */
       log_msg(LOG_ERR, "Logout request from db failed: %s", error);
-      return sd_varlink_errorbo(link, "org.openSUSE.rebootmgr.InternalError",
+      return sd_varlink_errorbo(link, "org.openSUSE.wtmpdb.InternalError",
 				SD_JSON_BUILD_PAIR_BOOLEAN("Success", false),
                                 SD_JSON_BUILD_PAIR_STRING("ErrorMsg", error));
 
@@ -357,7 +357,7 @@ vl_method_get_id(sd_varlink *link, sd_json_variant *parameters,
   if (id < 0 || error != NULL)
     {
       log_msg(LOG_ERR, "Get ID request from db failed: %s", error);
-      return sd_varlink_errorbo(link, "org.openSUSE.rebootmgr.NoEntryFound",
+      return sd_varlink_errorbo(link, "org.openSUSE.wtmpdb.NoEntryFound",
                                 SD_JSON_BUILD_PAIR_STRING("ErrorMsg", error));
 
     }
@@ -390,7 +390,7 @@ vl_method_get_boottime(sd_varlink *link, sd_json_variant *parameters,
   if (boottime == 0 || error != NULL)
     {
       log_msg(LOG_ERR, "Get boottime from db failed: %s", error);
-      return sd_varlink_errorbo(link, "org.openSUSE.rebootmgr.NoEntryFound",
+      return sd_varlink_errorbo(link, "org.openSUSE.wtmpdb.NoEntryFound",
 				SD_JSON_BUILD_PAIR_BOOLEAN("Success", false),
                                 SD_JSON_BUILD_PAIR_STRING("ErrorMsg", error));
 
@@ -494,7 +494,7 @@ vl_method_read_all(sd_varlink *link, sd_json_variant *parameters,
   if (r < 0 || error != NULL || incomplete)
     {
       log_msg(LOG_ERR, "Didn't got all entries from db: %s", error);
-      return sd_varlink_errorbo(link, "org.openSUSE.rebootmgr.InternalError",
+      return sd_varlink_errorbo(link, "org.openSUSE.wtmpdb.InternalError",
 				SD_JSON_BUILD_PAIR_BOOLEAN("Success", false),
                                 SD_JSON_BUILD_PAIR_STRING("ErrorMsg", error?error:"unknown"));
 
@@ -551,7 +551,7 @@ vl_method_rotate(sd_varlink *link, sd_json_variant *parameters,
   if (r < 0 || error != NULL)
     {
       log_msg(LOG_ERR, "Rotate db failed: %s", error);
-      return sd_varlink_errorbo(link, "org.openSUSE.rebootmgr.NoEntryFound",
+      return sd_varlink_errorbo(link, "org.openSUSE.wtmpdb.NoEntryFound",
 				SD_JSON_BUILD_PAIR_BOOLEAN("Success", false),
                                 SD_JSON_BUILD_PAIR_STRING("ErrorMsg", error));
     }
