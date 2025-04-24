@@ -1,3 +1,7 @@
+Version 0.74.0
+* Fix varlink interface name (rebootmgr vs wtmpdb)
+* import: match login by tty if non-zero pid does not match
+
 Version 0.73.0
 * Expand accepted time format options (-p)
 * Use documented -t short option for last --until
