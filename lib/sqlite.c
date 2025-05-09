@@ -70,7 +70,7 @@ open_database_ro (const char *path, sqlite3 **db, char **error)
   if (r != SQLITE_OK)
     {
       if (error)
-	if (asprintf(error, "open_database_ro: Cannot open database (%s): %s",
+	if (asprintf(error, "Cannot open database (%s) read-only: %s",
 		     path, sqlite3_errmsg(*db)) < 0)
 	  *error = strdup("open_database_ro: Out of memory");
       sqlite3_close(*db);
@@ -103,7 +103,7 @@ open_database_rw (const char *path, sqlite3 **db, char **error)
   if (r != SQLITE_OK)
     {
       if (error)
-	if (asprintf (error, "open_database_rw: Cannot create/open database (%s): %s",
+	if (asprintf (error, "Cannot create/open database (%s): %s",
 		      path, sqlite3_errmsg (*db)) < 0)
 	  *error = strdup ("open_database_rw: Out of memory");
 
@@ -131,7 +131,7 @@ add_entry (sqlite3 *db, int type, const char *user,
   if (sqlite3_exec (db, sql_table, 0, 0, &err_msg) != SQLITE_OK)
     {
       if (error)
-	if (asprintf (error, "add_entry: SQL error: %s", err_msg) < 0)
+	if (asprintf (error, "SQL error adding entry: %s", err_msg) < 0)
 	  *error = strdup ("add_entry: Out of memory");
       sqlite3_free (err_msg);
 
@@ -141,7 +141,7 @@ add_entry (sqlite3 *db, int type, const char *user,
   if (sqlite3_prepare_v2 (db, sql_insert, -1, &res, 0) != SQLITE_OK)
     {
       if (error)
-        if (asprintf (error, "add_entry: Failed to execute statement: %s",
+        if (asprintf (error, "Failed to prepare statement (add_entry): %s",
                       sqlite3_errmsg (db)) < 0)
           *error = strdup ("add_entry: Out of memory");
 
@@ -151,7 +151,7 @@ add_entry (sqlite3 *db, int type, const char *user,
   if (sqlite3_bind_int (res, 1, type) != SQLITE_OK)
     {
       if (error)
-        if (asprintf (error, "add_entry: Failed to create replace statement for type: %s",
+        if (asprintf (error, "Failed to create add statement for 'type': %s",
                       sqlite3_errmsg (db)) < 0)
           *error = strdup("add_entry: Out of memory");
 
@@ -162,7 +162,7 @@ add_entry (sqlite3 *db, int type, const char *user,
   if (sqlite3_bind_text (res, 2, user, -1, SQLITE_STATIC) != SQLITE_OK)
     {
       if (error)
-        if (asprintf (error, "add_entry: Failed to create replace statement for user: %s",
+        if (asprintf (error, "Failed to create add statement for 'user': %s",
                       sqlite3_errmsg (db)) < 0)
           *error = strdup ("add_entry: Out of memory");
 
@@ -173,7 +173,7 @@ add_entry (sqlite3 *db, int type, const char *user,
   if (sqlite3_bind_int64 (res, 3, usec_login) != SQLITE_OK)
     {
       if (error)
-        if (asprintf (error, "add_entry: Failed to create replace statement for login time: %s",
+        if (asprintf (error, "Failed to create add statement for 'login' time (add_entry): %s",
                       sqlite3_errmsg (db)) < 0)
           *error = strdup("add_entry: Out of memory");
 
@@ -184,7 +184,7 @@ add_entry (sqlite3 *db, int type, const char *user,
   if (sqlite3_bind_text (res, 4, tty, -1, SQLITE_STATIC) != SQLITE_OK)
     {
       if (error)
-        if (asprintf (error, "add_entry: Failed to create replace statement for tty: %s",
+        if (asprintf (error, "Failed to create add statement for 'tty': %s",
                       sqlite3_errmsg (db)) < 0)
           *error = strdup("add_entry: Out of memory");
 
@@ -195,7 +195,7 @@ add_entry (sqlite3 *db, int type, const char *user,
   if (sqlite3_bind_text (res, 5, rhost, -1, SQLITE_STATIC) != SQLITE_OK)
     {
       if (error)
-        if (asprintf (error, "add_entry: Failed to create replace statement for rhost: %s",
+        if (asprintf (error, "Failed to create add statement for 'rhost': %s",
                       sqlite3_errmsg (db)) < 0)
           *error = strdup("add_entry: Out of memory");
 
@@ -206,7 +206,7 @@ add_entry (sqlite3 *db, int type, const char *user,
   if (sqlite3_bind_text (res, 6, service, -1, SQLITE_STATIC) != SQLITE_OK)
     {
       if (error)
-        if (asprintf (error, "add_entry: Failed to create replace statement for service: %s",
+        if (asprintf (error, "Failed to create add statement for 'service': %s",
                       sqlite3_errmsg (db)) < 0)
           *error = strdup("add_entry: Out of memory");
 
@@ -219,8 +219,8 @@ add_entry (sqlite3 *db, int type, const char *user,
   if (step != SQLITE_DONE)
     {
       if (error)
-        if (asprintf (error, "add_entry: Adding an entry did not return SQLITE_DONE: %d",
-                      step) < 0)
+        if (asprintf (error, "Adding an entry failed: %s",
+                      sqlite3_errstr(step)) < 0)
           *error = strdup("add_entry: Out of memory");
 
       sqlite3_finalize(res);
@@ -269,7 +269,7 @@ update_logout (sqlite3 *db, int64_t id, uint64_t usec_logout, char **error)
   if (sqlite3_prepare_v2 (db, sql, -1, &res, 0) != SQLITE_OK)
     {
       if (error)
-        if (asprintf (error, "update_logout: Failed to execute statement: %s",
+        if (asprintf (error, "Failed to prepare statement (update_logout): %s",
                       sqlite3_errmsg (db)) < 0)
           *error = strdup ("update_logout: Out of memory");
 
@@ -279,7 +279,7 @@ update_logout (sqlite3 *db, int64_t id, uint64_t usec_logout, char **error)
   if (sqlite3_bind_int64 (res, 1, usec_logout) != SQLITE_OK)
     {
       if (error)
-        if (asprintf (error, "update_logout: Failed to create update query (logout): %s",
+        if (asprintf (error, "Failed to create update query (logout): %s",
                       sqlite3_errmsg (db)) < 0)
           *error = strdup("update_logout: Out of memory");
 
@@ -290,7 +290,7 @@ update_logout (sqlite3 *db, int64_t id, uint64_t usec_logout, char **error)
   if (sqlite3_bind_int64 (res, 2, id) != SQLITE_OK)
     {
       if (error)
-        if (asprintf (error, "update_logout: Failed to create update query (ID): %s",
+        if (asprintf (error, "Failed to create update query (ID): %s",
                       sqlite3_errmsg (db)) < 0)
           *error = strdup("update_logout: Out of memory");
 
@@ -303,8 +303,8 @@ update_logout (sqlite3 *db, int64_t id, uint64_t usec_logout, char **error)
   if (step != SQLITE_DONE)
     {
       if (error)
-        if (asprintf (error, "update_logout: Updating logout time did not return SQLITE_DONE: %d",
-                      step) < 0)
+        if (asprintf (error, "Updating logout time failed: %s",
+                      sqlite3_errstr(step)) < 0)
           *error = strdup("update_logout: Out of memory");
 
       sqlite3_finalize(res);
@@ -315,7 +315,7 @@ update_logout (sqlite3 *db, int64_t id, uint64_t usec_logout, char **error)
   if ((changes = sqlite3_changes (db)) != 1)
     {
       if (error)
-        if (asprintf (error, "update_logout: Updated wrong number of rows, expected 1, got %d",
+        if (asprintf (error, "Update of logout time changed wrong number of rows, expected 1, got %d",
                       changes) < 0)
           *error = strdup("update_logout: Out of memory");
 
@@ -364,7 +364,7 @@ search_id (sqlite3 *db, const char *tty, char **error)
     {
       int r = -ENOTSUP;
       if (error)
-        if (asprintf (error, "search_id: Failed to execute statement: %s",
+        if (asprintf (error, "Failed to prepare statement (search_id): %s",
                       sqlite3_errmsg (db)) < 0)
 	  {
 	    r = -ENOMEM;
@@ -377,7 +377,7 @@ search_id (sqlite3 *db, const char *tty, char **error)
     {
       int r = -EPROTO;
       if (error)
-        if (asprintf (error, "search_id: Failed to create search query: %s",
+        if (asprintf (error, "Failed to create search query 'tty': %s",
                       sqlite3_errmsg (db)) < 0)
 	  {
 	    r = -ENOMEM;
@@ -396,7 +396,7 @@ search_id (sqlite3 *db, const char *tty, char **error)
     {
       id = -ENOENT;
       if (error)
-        if (asprintf (error, "search_id: Open entry for tty '%s' not found", tty) < 0)
+        if (asprintf (error, "Open entry for tty '%s' not found (search_id)", tty) < 0)
 	  {
 	    *error = strdup("search_id: Out of memory");
 	    id = -ENOMEM;
@@ -406,7 +406,8 @@ search_id (sqlite3 *db, const char *tty, char **error)
     {
       id = -ENOENT;
       if (error)
-        if (asprintf (error, "search_id: sqlite3_step returned: %d", step) < 0)
+        if (asprintf (error, "Error searching open entry for tty '%s': %s",
+		      tty, sqlite3_errstr(step)) < 0)
 	  {
 	    *error = strdup("search_id: Out of memory");
 	    id = -ENOMEM;
@@ -567,7 +568,7 @@ sqlite_rotate(const char *db_path, const int days, char **wtmpdb_name,
   if (sqlite3_prepare_v2 (db_src, sql_select, -1, &res, 0) != SQLITE_OK)
     {
       if (error)
-        if (asprintf (error, "sqlite_rotate: Failed to execute statement %s: %s",
+        if (asprintf (error, "Failed to prepare statement %s (sqlite_rotate): %s",
 		      sql_select,
                       sqlite3_errmsg (db_src)) < 0)
           *error = strdup ("sqlite_rotate: Out of memory");
@@ -581,7 +582,7 @@ sqlite_rotate(const char *db_path, const int days, char **wtmpdb_name,
   if (sqlite3_bind_int64 (res, 1, login_t) != SQLITE_OK)
     {
       if (error)
-        if (asprintf (error, "sqlite_rotate: Failed to create replace statement for login time: %s",
+        if (asprintf (error, "Failed to create rotate statement for 'login' time: %s",
                       sqlite3_errmsg (db_src)) < 0)
           *error = strdup("sqlite_rotate: Out of memory");
 
@@ -600,7 +601,7 @@ sqlite_rotate(const char *db_path, const int days, char **wtmpdb_name,
   }
   if (rc != SQLITE_DONE)
     {
-      if (asprintf (error, "sqlite_rotate: SQL error: %s", sqlite3_errmsg(db_src)) < 0)
+      if (asprintf (error, "SQL error rotating db: %s", sqlite3_errmsg(db_src)) < 0)
 	*error = strdup ("sqlite_rotate: Out of memory");
 
       sqlite3_finalize(res);
@@ -617,7 +618,7 @@ sqlite_rotate(const char *db_path, const int days, char **wtmpdb_name,
   if (sqlite3_prepare_v2 (db_src, sql_delete, -1, &res, 0) != SQLITE_OK)
     {
       if (error)
-        if (asprintf (error, "sqlite_rotate: Failed to execute statement %s: %s",
+        if (asprintf (error, "Failed to prepare statement %s (sqlite_rotate): %s",
 		      sql_delete,
                       sqlite3_errmsg (db_src)) < 0)
           *error = strdup ("sqlite_rotate: Out of memory");
@@ -631,7 +632,7 @@ sqlite_rotate(const char *db_path, const int days, char **wtmpdb_name,
   if (sqlite3_bind_int64 (res, 1, login_t) != SQLITE_OK)
     {
       if (error)
-        if (asprintf (error, "sqlite_rotate: Failed to create replace statement for login time: %s",
+        if (asprintf (error, "Failed to create rotate statement for 'login' time: %s",
                       sqlite3_errmsg (db_src)) < 0)
           *error = strdup("sqlite_rotate: Out of memory");
 
@@ -648,8 +649,8 @@ sqlite_rotate(const char *db_path, const int days, char **wtmpdb_name,
   if (step != SQLITE_DONE)
     {
       if (error)
-        if (asprintf (error, "sqlite_rotate: Adding an entry did not return SQLITE_DONE: %d",
-                      step) < 0)
+        if (asprintf (error, "Error rotating entry: %s",
+                      sqlite3_errstr(step)) < 0)
           *error = strdup("sqlite_rotate: Out of memory");
 
       sqlite3_finalize(res);
@@ -690,7 +691,7 @@ search_boottime (sqlite3 *db, char **error)
   if (sqlite3_prepare_v2 (db, sql, -1, &res, 0) != SQLITE_OK)
     {
       if (error)
-        if (asprintf (error, "search_boottime: Failed to execute statement: %s",
+        if (asprintf (error, "Failed to prepare statement (search_boottime): %s",
                       sqlite3_errmsg (db)) < 0)
           *error = strdup ("search_boottime: Out of memory");
 
@@ -704,7 +705,8 @@ search_boottime (sqlite3 *db, char **error)
   else
     {
       if (error)
-        if (asprintf (error, "search_boottime: Boot time not found (%d)", step) < 0)
+        if (asprintf (error, "Boot time not found: %s",
+		      sqlite3_errstr(step)) < 0)
           *error = strdup("search_boottime: Out of memory");
 
       sqlite3_finalize (res);
