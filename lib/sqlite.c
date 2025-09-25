@@ -61,6 +61,26 @@ strip_extension(char *in_str)
     }
 }
 
+/* Creates the table if it does not exist.
+ * Returns 0 on success, -1 on failure. */
+static int64_t
+create_table (sqlite3 *db, char **error)
+{
+  char *err_msg = NULL;
+  char *sql_table = "CREATE TABLE IF NOT EXISTS wtmp(ID INTEGER PRIMARY KEY, Type INTEGER, User TEXT NOT NULL, Login INTEGER, Logout INTEGER, TTY TEXT, RemoteHost TEXT, Service TEXT) STRICT;";
+
+  if (sqlite3_exec (db, sql_table, 0, 0, &err_msg) != SQLITE_OK)
+    {
+      if (error)
+	if (asprintf (error, "SQL error creating table: %s", err_msg) < 0)
+	  *error = strdup ("create_table: Out of memory");
+      sqlite3_free (err_msg);
+
+      return -1;
+    }
+  return 0;
+}
+
 static int
 open_database_ro (const char *path, sqlite3 **db, char **error)
 {
@@ -123,20 +143,11 @@ add_entry (sqlite3 *db, int type, const char *user,
 	   uint64_t usec_login, const char *tty, const char *rhost,
 	   const char *service, char **error)
 {
-  char *err_msg = NULL;
   sqlite3_stmt *res;
-  char *sql_table = "CREATE TABLE IF NOT EXISTS wtmp(ID INTEGER PRIMARY KEY, Type INTEGER, User TEXT NOT NULL, Login INTEGER, Logout INTEGER, TTY TEXT, RemoteHost TEXT, Service TEXT) STRICT;";
   char *sql_insert = "INSERT INTO wtmp (Type,User,Login,TTY,RemoteHost,Service) VALUES(?,?,?,?,?,?);";
 
-  if (sqlite3_exec (db, sql_table, 0, 0, &err_msg) != SQLITE_OK)
-    {
-      if (error)
-	if (asprintf (error, "SQL error adding entry: %s", err_msg) < 0)
-	  *error = strdup ("add_entry: Out of memory");
-      sqlite3_free (err_msg);
-
-      return -1;
-    }
+  if (create_table (db, error) != 0)
+    return -1;
 
   if (sqlite3_prepare_v2 (db, sql_insert, -1, &res, 0) != SQLITE_OK)
     {
