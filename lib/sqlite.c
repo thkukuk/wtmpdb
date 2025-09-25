@@ -84,9 +84,14 @@ create_table (sqlite3 *db, char **error)
 static int
 open_database_ro (const char *path, sqlite3 **db, char **error)
 {
+  struct stat statbuf;
+  int empty_file;
   int r;
 
-  r = sqlite3_open_v2 (path, db, SQLITE_OPEN_READONLY, NULL);
+  empty_file = stat(path, &statbuf) == 0 && statbuf.st_size == 0;
+  r = sqlite3_open_v2 (path, db, empty_file ?
+                       SQLITE_OPEN_READWRITE | SQLITE_OPEN_MEMORY :
+                       SQLITE_OPEN_READONLY, NULL);
   if (r != SQLITE_OK)
     {
       if (error)
@@ -100,7 +105,10 @@ open_database_ro (const char *path, sqlite3 **db, char **error)
 
   sqlite3_busy_timeout(*db, TIMEOUT);
 
-  return 0;
+  if (empty_file)
+    r = create_table (*db, error);
+
+  return r == SQLITE_OK ? 0 : -1;
 }
 
 static int
