@@ -142,7 +142,8 @@ open_database_rw (const char *path, sqlite3 **db, char **error)
 
   sqlite3_busy_timeout(*db, TIMEOUT);
 
-  return 0;
+  r = create_table (*db, error);
+  return r == SQLITE_OK ? 0 : -1;
 }
 
 /* Add a new entry. Returns ID (>=0) on success, -1 on failure. */
@@ -153,9 +154,6 @@ add_entry (sqlite3 *db, int type, const char *user,
 {
   sqlite3_stmt *res;
   char *sql_insert = "INSERT INTO wtmp (Type,User,Login,TTY,RemoteHost,Service) VALUES(?,?,?,?,?,?);";
-
-  if (create_table (db, error) != 0)
-    return -1;
 
   if (sqlite3_prepare_v2 (db, sql_insert, -1, &res, 0) != SQLITE_OK)
     {
