@@ -65,7 +65,7 @@ static char *wtmpdb_path = NULL;
 
 #define LOGROTATE_DAYS 60
 
-/* lenght of login string cannot become longer */
+/* length of login string cannot become longer */
 #define LAST_TIMESTAMP_LEN 32
 
 static uint64_t wtmp_start = UINT64_MAX;
@@ -409,9 +409,11 @@ print_entry (void *unused __attribute__((__unused__)),
 	     int argc, char **argv, char **azColName)
 {
   char host_buf[NI_MAXHOST];
-  char logintime[32]; /* LAST_TIMESTAMP_LEN */
-  char logouttime[32]; /* LAST_TIMESTAMP_LEN */
-  char length[32]; /* LAST_TIMESTAMP_LEN */
+  struct times_buf {
+    char login[LAST_TIMESTAMP_LEN];
+    char logout[LAST_TIMESTAMP_LEN];
+    char length[LAST_TIMESTAMP_LEN];
+  } times;
   char *endptr;
   uint64_t logout_t = 0;
   static uint64_t newer_boot = 0;
@@ -470,7 +472,7 @@ print_entry (void *unused __attribute__((__unused__)),
 	return 0;
     }
 
-  format_time (login_fmt, logintime, sizeof (logintime),
+  format_time (login_fmt, times.login, sizeof (times.login),
 	       login_t/USEC_PER_SEC);
 
   if (argv[4])
@@ -485,17 +487,17 @@ print_entry (void *unused __attribute__((__unused__)),
 	  ((time_t)(logout_t/USEC_PER_SEC) < present))
 	return 0;
 
-      format_time (logout_fmt, logouttime, sizeof (logouttime),
+      format_time (logout_fmt, times.logout, sizeof (times.logout),
 		   logout_t/USEC_PER_SEC);
 
-      calc_time_length (length, sizeof(length), login_t, logout_t);
+      calc_time_length (times.length, sizeof(times.length), login_t, logout_t);
     }
   else /* login but no logout */
     {
       if (after_reboot)
 	{
-	  snprintf (logouttime, sizeof (logouttime), "crash");
-	  length[0] = '\0';
+	  snprintf (times.logout, sizeof (times.logout), "crash");
+	  times.length[0] = '\0';
 	}
       else
 	{
@@ -504,30 +506,30 @@ print_entry (void *unused __attribute__((__unused__)),
 	    case USER_PROCESS:
 	      if (logout_fmt == TIMEFMT_HHMM)
 		{
-		  snprintf (logouttime, sizeof (logouttime), "still");
-		  snprintf(length, sizeof(length), "logged in");
+		  snprintf (times.logout, sizeof (times.logout), "still");
+		  snprintf(times.length, sizeof(times.length), "logged in");
 		}
 	      else
 		{
-		  snprintf (logouttime, sizeof (logouttime), "still logged in");
-		  length[0] = '\0';
+		  snprintf (times.logout, sizeof (times.logout), "still logged in");
+		  times.length[0] = '\0';
 		}
 	      break;
 	    case BOOT_TIME:
 	      if (logout_fmt == TIMEFMT_HHMM)
 		{
-		  snprintf (logouttime, sizeof (logouttime), "still");
-		  snprintf(length, sizeof(length), "running");
+		  snprintf (times.logout, sizeof (times.logout), "still");
+		  snprintf(times.length, sizeof(times.length), "running");
 		}
 	      else
 		{
-		  snprintf (logouttime, sizeof (logouttime), "still running");
-		  length[0] = '\0';
+		  snprintf (times.logout, sizeof (times.logout), "still running");
+		  times.length[0] = '\0';
 		}
 	      break;
 	    default:
-	      snprintf (logouttime, sizeof (logouttime), "ERROR");
-	      snprintf(length, sizeof(length), "Unknown: %d", type);
+	      snprintf (times.logout, sizeof (times.logout), "ERROR");
+	      snprintf(times.length, sizeof(times.length), "Unknown: %d", type);
 	      break;
 	    }
 	}
@@ -595,21 +597,23 @@ print_entry (void *unused __attribute__((__unused__)),
 	}
     }
 
-  print_line (user, tty, host, print_service, logintime, logouttime, length);
-
   if (xflag && (type == BOOT_TIME) && newer_boot != 0 && logout_t != 0)
     {
-      format_time (login_fmt, logintime, sizeof (logintime),
+      struct times_buf shutdown;
+
+      format_time (login_fmt, shutdown.login, sizeof (shutdown.login),
 		   logout_t/USEC_PER_SEC);
-      format_time (logout_fmt, logouttime, sizeof (logouttime),
+      format_time (logout_fmt, shutdown.logout, sizeof (shutdown.logout),
 		   newer_boot/USEC_PER_SEC);
-      calc_time_length (length, sizeof(length), logout_t, newer_boot);
+      calc_time_length (shutdown.length, sizeof(shutdown.length), logout_t, newer_boot);
 
       print_line ("shutdown", "system down", host, print_service,
-		  logintime, logouttime, length);
+		  shutdown.login, shutdown.logout, shutdown.length);
     }
   if (xflag && (type == BOOT_TIME))
     newer_boot = login_t;
+
+  print_line (user, tty, host, print_service, times.login, times.logout, times.length);
 
   free (print_service);
 
