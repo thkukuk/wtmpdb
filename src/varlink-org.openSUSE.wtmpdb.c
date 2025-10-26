@@ -90,6 +90,8 @@ SD_VARLINK_DEFINE_INTERFACE(
                 org_openSUSE_wtmpdb,
                 "org.openSUSE.wtmpdb",
 		SD_VARLINK_INTERFACE_COMMENT("Wtmpdbd control APIs"),
+		SD_VARLINK_SYMBOL_COMMENT("Wtmpdb entry struct"),
+		&vl_type_WtmpdbEntry,
 		SD_VARLINK_SYMBOL_COMMENT("Add login entry"),
                 &vl_method_Login,
 		SD_VARLINK_SYMBOL_COMMENT("Close login entry with logout time"),
