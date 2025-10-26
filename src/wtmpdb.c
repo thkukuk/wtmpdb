@@ -131,6 +131,12 @@ isipaddr (const char *string, int *addr_type,
   return is_ip;
 }
 
+static inline time_t
+from_usec(uint64_t usecs)
+{
+  return (time_t) usecs / USEC_PER_SEC;
+}
+
 static int
 parse_time (const char *str, time_t *arg)
 {
@@ -446,17 +452,28 @@ print_entry (void *unused __attribute__((__unused__)),
     fprintf (stderr, "Invalid numeric time entry for 'login': '%s'\n",
 	     argv[3]);
 
+  if (argv[4])
+    {
+      logout_t = strtoull(argv[4], &endptr, 10);
+      if ((errno == ERANGE && logout_t == ULLONG_MAX)
+	  || (endptr == argv[4]) || (*endptr != '\0'))
+	fprintf (stderr, "Invalid numeric time entry for 'logout': '%s'\n",
+		 argv[4]);
+    }
+
   if (login_t < wtmp_start)
     wtmp_start = login_t;
 
-  if (since && (since > (time_t)(login_t/USEC_PER_SEC)))
-    return 0;
+  int swap = type == xflag && BOOT_TIME && logout_t != 0;
 
-  if (until && (until < (time_t)(login_t/USEC_PER_SEC)))
-    return 0;
-
-  if (present && (present < (time_t)(login_t/USEC_PER_SEC)))
-    return 0;
+  if ((since && since > from_usec(swap ? logout_t : login_t)) ||
+      (until && until < from_usec(login_t)) ||
+      (present && present < from_usec(login_t)))
+    {
+      if (xflag && (type == BOOT_TIME))
+        newer_boot = login_t;
+      return 0;
+    }
 
   if (match)
     {
@@ -475,7 +492,7 @@ print_entry (void *unused __attribute__((__unused__)),
   format_time (login_fmt, times.login, sizeof (times.login),
 	       login_t/USEC_PER_SEC);
 
-  if (argv[4])
+  if (logout_t != 0)
     {
       logout_t = strtoull(argv[4], &endptr, 10);
       if ((errno == ERANGE && logout_t == ULLONG_MAX)
@@ -607,13 +624,17 @@ print_entry (void *unused __attribute__((__unused__)),
 		   newer_boot/USEC_PER_SEC);
       calc_time_length (shutdown.length, sizeof(shutdown.length), logout_t, newer_boot);
 
-      print_line ("shutdown", "system down", host, print_service,
-		  shutdown.login, shutdown.logout, shutdown.length);
+      if ((!until || until >= from_usec(logout_t)) &&
+          (!since || since <= from_usec(logout_t)))
+          print_line ("shutdown", "system down", host, print_service,
+                      shutdown.login, shutdown.logout, shutdown.length);
     }
   if (xflag && (type == BOOT_TIME))
     newer_boot = login_t;
 
-  print_line (user, tty, host, print_service, times.login, times.logout, times.length);
+  if ((!until || until >= from_usec(login_t)) &&
+      (!since || since <= from_usec(login_t)))
+    print_line (user, tty, host, print_service, times.login, times.logout, times.length);
 
   free (print_service);
 
