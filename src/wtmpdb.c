@@ -93,6 +93,22 @@ static time_t since = 0; /* Who was logged in after this time? */
 static time_t until = 0; /* Who was logged in until this time? */
 static char **match = NULL; /* user/tty to display only */
 
+typedef enum cmd_idx {
+	CMD_NONE = 0,
+	CMD_LAST,
+	CMD_BOOT,
+	CMD_SHUTDOWN,
+	CMD_BOOTTIME,
+	CMD_ROTATE,
+	CMD_IMPORT,
+	CMD_MAX			/* per contract the always the last one */
+} cmd_idx_t;
+
+static const char *cmd_name[] = {
+	"unknown",	"last",		"boot",		"shutdown",		"boottime",
+	"rotate",	"import",	NULL
+};
+
 
 /* isipaddr - find out if string provided is an IP address or not
    0 - no IP address
@@ -623,16 +639,37 @@ print_entry (void *unused __attribute__((__unused__)),
 }
 
 static void
-usage (int retval)
+show_version(void)
+{
+  printf ("wtmpdb %s\n", VERSION);
+  exit(EXIT_SUCCESS);
+}
+
+static void
+usage (int retval, cmd_idx_t cmd)
 {
   FILE *output = (retval != EXIT_SUCCESS) ? stderr : stdout;
+  int i;
 
-  fprintf (output, "Usage: wtmpdb [command] [options]\n");
-  fputs ("Commands: last, boot, boottime, rotate, shutdown, import\n\n", output);
-  fputs ("Options for last:\n", output);
+  if (cmd == CMD_NONE) {
+    fprintf (output, "Usage: wtmpdb [command] [options] [operand]\n");
+    fprintf (output, "\nCommands: %s", cmd_name[1]);
+    for (i=2; i < CMD_MAX; i++)
+      fprintf(output, ", %s", cmd_name[i]);
+    fputs("\n\nCommon options:\n", output);
+  } else {
+    fprintf (output, "Usage: wtmpdb %s [options]%s\n", cmd_name[cmd],
+		(cmd == CMD_LAST || cmd == CMD_IMPORT) ? " [operand]" : "");
+    fputs ("\nOptions:\n", output);
+  }
+  fputs ("  -f, --file FILE     Use FILE as wtmpdb database\n", output);
+  fputs ("  -h, --help          Display this help message and exit\n", output);
+  fputs ("  -v, --version       Print version number and exit\n", output);
+  if (cmd == CMD_NONE)
+    fprintf (output, "\nOptions for %s:\n", cmd_name[CMD_LAST]);
+  if (cmd == CMD_LAST || cmd == CMD_NONE) {
   fputs ("  -a, --hostlast      Display hostnames as last entry\n", output);
   fputs ("  -d, --dns           Translate IP addresses into a hostname\n", output);
-  fputs ("  -f, --file FILE     Use FILE as wtmpdb database\n", output);
   fputs ("  -F, --fulltimes     Display full times and dates\n", output);
   fputs ("  -i, --ip            Translate hostnames to IP addresses\n", output);
   fputs ("  -j, --json          Generate JSON output\n", output);
@@ -644,40 +681,30 @@ usage (int retval)
   fputs ("  -t, --until TIME    Display who was logged in until TIME\n", output);
   fputs ("  -w, --fullnames     Display full IP addresses and user and domain names\n", output);
   fputs ("  -x, --system        Display system shutdown entries\n", output);
-  fputs ("      --time-format FORMAT  Display timestamps in the specified FORMAT:\n", output);
-  fputs ("                              notime|short|full|iso\n", output);
-
-  fputs ("  [username...]       Display only entries matching these arguments\n", output);
-  fputs ("  [tty...]            Display only entries matching these arguments\n", output);
-  fputs ("TIME must be in the format \"YYYY-MM-DD HH:MM:SS\"\n", output);
-  fputs ("\n", output);
-
-  fputs ("Options for boot (writes boot entry to wtmpdb):\n", output);
-  fputs ("  -f, --file FILE     Use FILE as wtmpdb database\n", output);
-  fputs ("\n", output);
-
-  fputs ("Options for boottime (print time of last system boot):\n", output);
-  fputs ("  -f, --file FILE     Use FILE as wtmpdb database\n", output);
-  fputs ("\n", output);
-
-  fputs ("Options for rotate (exports old entries to wtmpdb_<datetime>)):\n", output);
-  fputs ("  -f, --file FILE     Use FILE as wtmpdb database\n", output);
+    fputs ("  --time-format FMT   Display timestamps in the specified format.\n", output);
+    fputs ("\n  FMT format: notime|short|full|iso\n", output);
+    fputs ("  TIME format: YYYY-MM-DD HH:MM:SS\n", output);
+  }
+  if (cmd == CMD_NONE)
+    fprintf (output, "\nOperands for %s:\n", cmd_name[CMD_LAST]);
+  if (cmd == CMD_LAST) {
+    fputs ("\nOperands:\n", output);
+  }
+  if (cmd == CMD_LAST || cmd == CMD_NONE) {
+    fputs ("  username...         Display only entries matching these arguments\n", output);
+    fputs ("  tty...              Display only entries matching these arguments\n", output);
+  }
+  if (cmd == CMD_NONE)
+    fputs ("\nOptions for rotate (exports old entries to wtmpdb_<datetime>)):\n", output);
+  if (cmd == CMD_NONE || cmd == CMD_ROTATE) {
   fputs ("  -d, --days INTEGER  Export all entries which are older than the given days\n", output);
-  fputs ("\n", output);
-
-  fputs ("Options for shutdown (writes shutdown time to wtmpdb):\n", output);
-  fputs ("  -f, --file FILE     Use FILE as wtmpdb database\n", output);
-  fputs ("\n", output);
-
-  fputs ("Options for import (imports legacy wtmp logs):\n", output);
-  fputs ("  -f, --file FILE     Use FILE as wtmpdb database\n", output);
+  }
+  if (cmd == CMD_NONE)
+    fprintf (output, "\nOperands for %s:\n", cmd_name[CMD_IMPORT]);
+  if (cmd == CMD_IMPORT)
+    fputs ("\nOperands:\n", output);
+  if (cmd == CMD_IMPORT || cmd == CMD_NONE)
   fputs ("  logs...             Legacy log files to import\n", output);
-  fputs ("\n", output);
-
-  fputs ("Generic options:\n", output);
-  fputs ("  -h, --help          Display this help message and exit\n", output);
-  fputs ("  -v, --version       Print version number and exit\n", output);
-  fputs ("\n", output);
   exit (retval);
 }
 
@@ -685,6 +712,8 @@ static int
 main_rotate (int argc, char **argv)
 {
   struct option const longopts[] = {
+    {"help",     no_argument,       NULL, 'h'},
+    {"version",  no_argument,       NULL, 'v'},
     {"file", required_argument, NULL, 'f'},
     {"days", no_argument, NULL, 'd'},
     {NULL, 0, NULL, '\0'}
@@ -696,7 +725,7 @@ main_rotate (int argc, char **argv)
 
   int c;
 
-  while ((c = getopt_long (argc, argv, "f:d:", longopts, NULL)) != -1)
+  while ((c = getopt_long (argc, argv, "f:d:hv", longopts, NULL)) != -1)
     {
       switch (c)
         {
@@ -706,8 +735,14 @@ main_rotate (int argc, char **argv)
 	case 'd':
 	  days = atoi (optarg);
 	  break;
+        case 'v':
+          show_version();
+          break;
+        case 'h':
+          usage (EXIT_SUCCESS, CMD_ROTATE);
+          break;
         default:
-          usage (EXIT_FAILURE);
+          usage (EXIT_FAILURE, CMD_ROTATE);
           break;
         }
     }
@@ -715,7 +750,7 @@ main_rotate (int argc, char **argv)
   if (argc > optind)
     {
       fprintf (stderr, "Unexpected argument: %s\n", argv[optind]);
-      usage (EXIT_FAILURE);
+      usage (EXIT_FAILURE, CMD_ROTATE);
     }
 
   if (wtmpdb_rotate (wtmpdb_path, days, &error,
@@ -747,6 +782,8 @@ static int
 main_last (int argc, char **argv)
 {
   struct option const longopts[] = {
+    {"help",     no_argument,       NULL, 'h'},
+    {"version",  no_argument,       NULL, 'v'},
     {"hostlast", no_argument, NULL, 'a'},
     {"dns", no_argument, NULL, 'd'},
     {"file", required_argument, NULL, 'f'},
@@ -768,7 +805,7 @@ main_last (int argc, char **argv)
   char *error = NULL;
   int c;
 
-  while ((c = getopt_long (argc, argv, "0123456789adf:Fijn:p:RSs:t:wx",
+  while ((c = getopt_long (argc, argv, "0123456789adf:Fhijn:p:RSs:t:vwx",
 			   longopts, NULL)) != -1)
     {
       switch (c)
@@ -850,8 +887,14 @@ main_last (int argc, char **argv)
 	      exit (EXIT_FAILURE);
 	    }
 	  break;
+        case 'v':
+          show_version();
+          break;
+        case 'h':
+          usage (EXIT_SUCCESS, CMD_LAST);
+          break;
         default:
-          usage (EXIT_FAILURE);
+          usage (EXIT_FAILURE, CMD_LAST);
           break;
         }
     }
@@ -862,25 +905,25 @@ main_last (int argc, char **argv)
   if (nohostname && hostlast)
     {
       fprintf (stderr, "The options -a and -R cannot be used together.\n");
-      usage (EXIT_FAILURE);
+      usage (EXIT_FAILURE, CMD_LAST);
     }
 
   if (nohostname && dflag)
     {
       fprintf (stderr, "The options -d and -R cannot be used together.\n");
-      usage (EXIT_FAILURE);
+      usage (EXIT_FAILURE, CMD_LAST);
     }
 
   if (nohostname && iflag)
     {
       fprintf (stderr, "The options -i and -R cannot be used together.\n");
-      usage (EXIT_FAILURE);
+      usage (EXIT_FAILURE, CMD_LAST);
     }
 
   if (dflag && iflag)
     {
       fprintf (stderr, "The options -d and -i cannot be used together.\n");
-      usage (EXIT_FAILURE);
+      usage (EXIT_FAILURE, CMD_LAST);
     }
 
   if (jflag)
@@ -1003,6 +1046,8 @@ static int
 main_boot (int argc, char **argv)
 {
   struct option const longopts[] = {
+    {"help",     no_argument,       NULL, 'h'},
+    {"version",  no_argument,       NULL, 'v'},
     {"file", required_argument, NULL, 'f'},
     {"quiet", no_argument, NULL, 'q'},
     {NULL, 0, NULL, '\0'}
@@ -1014,7 +1059,7 @@ main_boot (int argc, char **argv)
   int quiet = 0;
 #endif
 
-  while ((c = getopt_long (argc, argv, "f:q", longopts, NULL)) != -1)
+  while ((c = getopt_long (argc, argv, "f:hqv", longopts, NULL)) != -1)
     {
       switch (c)
         {
@@ -1026,8 +1071,14 @@ main_boot (int argc, char **argv)
 	  quiet = 1;
 #endif
 	  break;
+        case 'v':
+          show_version();
+          break;
+        case 'h':
+          usage (EXIT_SUCCESS, CMD_BOOT);
+          break;
         default:
-          usage (EXIT_FAILURE);
+          usage (EXIT_FAILURE, CMD_BOOT);
           break;
         }
     }
@@ -1035,7 +1086,7 @@ main_boot (int argc, char **argv)
   if (argc > optind)
     {
       fprintf (stderr, "Unexpected argument: %s\n", argv[optind]);
-      usage (EXIT_FAILURE);
+      usage (EXIT_FAILURE, CMD_BOOT);
     }
 
   struct utsname uts;
@@ -1104,6 +1155,8 @@ static int
 main_boottime (int argc, char **argv)
 {
   struct option const longopts[] = {
+    {"help",     no_argument,       NULL, 'h'},
+    {"version",  no_argument,       NULL, 'v'},
     {"file", required_argument, NULL, 'f'},
     {NULL, 0, NULL, '\0'}
   };
@@ -1111,15 +1164,21 @@ main_boottime (int argc, char **argv)
   int c;
   uint64_t boottime;
 
-  while ((c = getopt_long (argc, argv, "f:", longopts, NULL)) != -1)
+  while ((c = getopt_long (argc, argv, "f:hv", longopts, NULL)) != -1)
     {
       switch (c)
         {
         case 'f':
           wtmpdb_path = optarg;
           break;
+        case 'v':
+          show_version();
+          break;
+        case 'h':
+          usage (EXIT_SUCCESS, CMD_BOOTTIME);
+          break;
         default:
-          usage (EXIT_FAILURE);
+          usage (EXIT_FAILURE, CMD_BOOTTIME);
           break;
         }
     }
@@ -1127,7 +1186,7 @@ main_boottime (int argc, char **argv)
   if (argc > optind)
     {
       fprintf (stderr, "Unexpected argument: %s\n", argv[optind]);
-      usage (EXIT_FAILURE);
+      usage (EXIT_FAILURE, CMD_BOOTTIME);
     }
 
   boottime = wtmpdb_get_boottime (wtmpdb_path, &error);
@@ -1151,21 +1210,29 @@ static int
 main_shutdown (int argc, char **argv)
 {
   struct option const longopts[] = {
+    {"help",     no_argument,       NULL, 'h'},
+    {"version",  no_argument,       NULL, 'v'},
     {"file", required_argument, NULL, 'f'},
     {NULL, 0, NULL, '\0'}
   };
   char *error = NULL;
   int c;
 
-  while ((c = getopt_long (argc, argv, "f:", longopts, NULL)) != -1)
+  while ((c = getopt_long (argc, argv, "f:hv", longopts, NULL)) != -1)
     {
       switch (c)
         {
         case 'f':
           wtmpdb_path = optarg;
           break;
+        case 'v':
+          show_version();
+          break;
+        case 'h':
+          usage (EXIT_SUCCESS, CMD_SHUTDOWN);
+          break;
         default:
-          usage (EXIT_FAILURE);
+          usage (EXIT_FAILURE, CMD_SHUTDOWN);
           break;
         }
     }
@@ -1173,7 +1240,7 @@ main_shutdown (int argc, char **argv)
   if (argc > optind)
     {
       fprintf (stderr, "Unexpected argument: %s\n", argv[optind]);
-      usage (EXIT_FAILURE);
+      usage (EXIT_FAILURE, CMD_SHUTDOWN);
     }
 
 #if HAVE_AUDIT
@@ -1218,20 +1285,28 @@ static int
 main_import (int argc, char **argv)
 {
   struct option const longopts[] = {
+    {"help",     no_argument,       NULL, 'h'},
+    {"version",  no_argument,       NULL, 'v'},
     {"file", required_argument, NULL, 'f'},
     {NULL, 0, NULL, '\0'}
   };
   int c;
 
-  while ((c = getopt_long (argc, argv, "f:", longopts, NULL)) != -1)
+  while ((c = getopt_long (argc, argv, "f:hv", longopts, NULL)) != -1)
     {
       switch (c)
         {
         case 'f':
           wtmpdb_path = optarg;
           break;
+        case 'v':
+          show_version();
+          break;
+        case 'h':
+          usage (EXIT_SUCCESS, CMD_IMPORT);
+          break;
         default:
-          usage (EXIT_FAILURE);
+          usage (EXIT_FAILURE, CMD_IMPORT);
           break;
         }
     }
@@ -1239,7 +1314,7 @@ main_import (int argc, char **argv)
   if (argc == optind)
     {
       fprintf (stderr, "No files specified to import.\n");
-      usage (EXIT_FAILURE);
+      usage (EXIT_FAILURE, CMD_IMPORT);
     }
 
   for (; optind < argc; optind++)
@@ -1255,39 +1330,43 @@ main (int argc, char **argv)
   struct option const longopts[] = {
     {"help",     no_argument,       NULL, 'h'},
     {"version",  no_argument,       NULL, 'v'},
+    {"file", required_argument,     NULL, 'f'},
     {NULL, 0, NULL, '\0'}
   };
   int c;
 
   if (strcmp (basename(argv[0]), "last") == 0)
     return main_last (argc, argv);
-  else if (argc == 1)
-    usage (EXIT_SUCCESS);
-  else if (strcmp (argv[1], "last") == 0)
+  if (argc == 1)
+    usage (EXIT_SUCCESS, CMD_NONE);
+  if (strcmp (argv[1], cmd_name[CMD_LAST]) == 0)
     return main_last (--argc, ++argv);
-  else if (strcmp (argv[1], "boot") == 0)
+  if (strcmp (argv[1], cmd_name[CMD_BOOT]) == 0)
     return main_boot (--argc, ++argv);
-  else if (strcmp (argv[1], "shutdown") == 0)
+  if (strcmp (argv[1], cmd_name[CMD_SHUTDOWN]) == 0)
     return main_shutdown (--argc, ++argv);
-  else if (strcmp (argv[1], "boottime") == 0)
+  if (strcmp (argv[1], cmd_name[CMD_BOOTTIME]) == 0)
     return main_boottime (--argc, ++argv);
-  else if (strcmp (argv[1], "rotate") == 0)
+  if (strcmp (argv[1], cmd_name[CMD_ROTATE]) == 0)
     return main_rotate (--argc, ++argv);
-  else if (strcmp (argv[1], "import") == 0)
+  if (strcmp (argv[1], cmd_name[CMD_IMPORT]) == 0)
     return main_import (--argc, ++argv);
 
-  while ((c = getopt_long (argc, argv, "hv", longopts, NULL)) != -1)
+  while ((c = getopt_long (argc, argv, "f:hv", longopts, NULL)) != -1)
     {
       switch (c)
 	{
 	case 'h':
-	  usage (EXIT_SUCCESS);
+	  usage (EXIT_SUCCESS, CMD_NONE);
 	  break;
 	case 'v':
-	  printf ("wtmpdb %s\n", VERSION);
+	  show_version();
+	  break;
+	case 'f':
+	  /* ignore common option */
 	  break;
 	default:
-	  usage (EXIT_FAILURE);
+	  usage (EXIT_FAILURE, CMD_NONE);
 	  break;
 	}
     }
@@ -1295,7 +1374,7 @@ main (int argc, char **argv)
   if (argc > optind)
     {
       fprintf (stderr, "Unexpected argument: %s\n", argv[optind]);
-      usage (EXIT_FAILURE);
+      usage (EXIT_FAILURE, CMD_NONE);
     }
 
   exit (EXIT_SUCCESS);
