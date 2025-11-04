@@ -57,11 +57,11 @@ extern int64_t wtmpdb_login (const char *db_path, int type,
 			     const char *service, char **error);
 extern int wtmpdb_logout (const char *db_path, int64_t id,
 			  uint64_t usec_logout, char **error);
-extern int wtmpdb_read_all (const char *db_path,
+extern int wtmpdb_read_all (const char *db_path, int uniq,
 		            int (*cb_func) (void *unused, int argc,
 				            char **argv, char **azColName),
 			    char **error);
-extern int wtmpdb_read_all_v2 (const char *db_path,
+extern int wtmpdb_read_all_v2 (const char *db_path, int uniq,
 			       int (*cb_func) (void *unused, int argc,
 					       char **argv, char **azColName),
 			       void *userdata, char **error);

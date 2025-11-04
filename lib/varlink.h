@@ -35,7 +35,7 @@ extern int64_t varlink_login (int type, const char *user,
 			      char **error);
 extern int varlink_logout (int64_t id, uint64_t usec_logout, char **error);
 extern int64_t varlink_get_id (const char *tty, char **error);
-extern int varlink_read_all (int (*cb_func)(void *unused, int argc, char **argv,
+extern int varlink_read_all (int uniq, int (*cb_func)(void *unused, int argc, char **argv,
 					    char **azColName),
 			     void *userdata, char **error);
 extern int varlink_get_boottime (uint64_t *boottime, char **error);
