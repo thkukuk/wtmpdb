@@ -458,7 +458,7 @@ sqlite_get_id (const char *db_path, const char *tty, char **error)
    each entry.
    Returns 0 on success, -1 on failure. */
 int
-sqlite_read_all (const char *db_path,
+sqlite_read_all (const char *db_path, int uniq,
 		 int (*cb_func)(void *unused, int argc, char **argv,
 				char **azColName),
 		 void *userdata, char **error)
@@ -471,7 +471,11 @@ sqlite_read_all (const char *db_path,
   if (r != 0)
     return -r;
 
-  char *sql = "SELECT * FROM wtmp ORDER BY Login DESC, Logout ASC";
+  char *sql = uniq
+	? "SELECT ID, Type, User, Login, Logout, TTY, RemoteHost, Service FROM ("
+		"SELECT *,ROW_NUMBER() OVER (PARTITION BY User ORDER BY Login DESC) AS rn "
+		"FROM wtmp WHERE Login IS NOT NULL AND TTY != '~') WHERE rn = 1"
+	: "SELECT * FROM wtmp ORDER BY Login DESC, Logout ASC";
 
   r = sqlite3_exec (db, sql, cb_func, userdata, &err_msg);
   sqlite3_close (db);
