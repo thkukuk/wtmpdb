@@ -81,6 +81,7 @@ static int jflag = 0;
 static int wflag = 0;
 static int xflag = 0;
 static int legacy = 0;
+static int uniq = 0;
 static const int name_len = 8; /* LAST_LOGIN_LEN */
 static int login_fmt = TIMEFMT_SHORT;
 static int login_len = 16; /* 16 = short, 24 = full */
@@ -712,6 +713,7 @@ usage (int retval, cmd_idx_t cmd)
   fputs ("  -S, --service       Display PAM service used to login\n", output);
   fputs ("  -s, --since TIME    Display who was logged in after TIME\n", output);
   fputs ("  -t, --until TIME    Display who was logged in until TIME\n", output);
+  fputs ("  -u, --unique        Display the latest entry for each user, only.\n", output);
   fputs ("  -w, --fullnames     Display full IP addresses and user and domain names\n", output);
   fputs ("  -x, --system        Display system shutdown entries\n", output);
     fputs ("  --time-format FMT   Display timestamps in the specified format.\n", output);
@@ -830,6 +832,7 @@ main_last (int argc, char **argv)
     {"service", no_argument, NULL, 'S'},
     {"since", required_argument, NULL, 's'},
     {"system", no_argument, NULL, 'x'},
+    {"unique", no_argument, NULL, 'u'},
     {"until", required_argument, NULL, 't'},
     {"time-format", required_argument, NULL, TIMEFMT_VALUE},
     {"json", no_argument, NULL, 'j'},
@@ -839,7 +842,7 @@ main_last (int argc, char **argv)
   char *error = NULL;
   int c;
 
-  while ((c = getopt_long (argc, argv, "0123456789adf:FhijLn:p:RSs:t:vwx",
+  while ((c = getopt_long (argc, argv, "0123456789adf:FhijLn:p:RSs:t:uvwx",
 			   longopts, NULL)) != -1)
     {
       switch (c)
@@ -910,6 +913,9 @@ main_last (int argc, char **argv)
 	      exit (EXIT_FAILURE);
 	    }
 	  break;
+	case 'u':
+	  uniq = 1;
+	  break;
 	case 'w':
 	  wflag = 1;
 	  break;
@@ -966,7 +972,7 @@ main_last (int argc, char **argv)
   if (jflag)
     printf ("{\n   \"entries\": [\n");
 
-  if (wtmpdb_read_all (wtmpdb_path, print_entry, &error) != 0)
+  if (wtmpdb_read_all (wtmpdb_path, uniq, print_entry, &error) != 0)
     {
       if (error)
         {
@@ -1378,6 +1384,15 @@ main (int argc, char **argv)
   }
   if (strcmp (basename(argv[0]), "wlast") == 0)
     return main_last (argc, argv);
+  if (strcmp (basename(argv[0]), "lastlog") == 0) {
+	legacy = 1;
+	uniq = 1;
+    return main_last (argc, argv);
+  }
+  if (strcmp (basename(argv[0]), "wlastlog") == 0) {
+	uniq = 1;
+    return main_last (argc, argv);
+  }
   if (argc == 1)
     usage (EXIT_SUCCESS, CMD_NONE);
   if (strcmp (argv[1], cmd_name[CMD_LAST]) == 0)
