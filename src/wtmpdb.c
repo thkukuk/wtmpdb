@@ -69,7 +69,7 @@ static char *wtmpdb_path = NULL;
 #define LAST_TIMESTAMP_LEN 32
 
 static uint64_t wtmp_start = UINT64_MAX;
-static int after_reboot = 0;
+static uint64_t after_reboot = 0;
 
 /* options for last */
 static int hostlast = 0;
@@ -82,6 +82,7 @@ static int wflag = 0;
 static int xflag = 0;
 static int legacy = 0;
 static int uniq = 0;
+static int open_sessions = 0; /* show open sessions, only */
 static const int name_len = 8; /* LAST_LOGIN_LEN */
 static int login_fmt = TIMEFMT_SHORT;
 static int login_len = 16; /* 16 = short, 24 = full */
@@ -479,6 +480,15 @@ print_entry (void *unused __attribute__((__unused__)),
       || (endptr == argv[3]) || (*endptr != '\0'))
     fprintf (stderr, "Invalid numeric time entry for 'login': '%s'\n",
 	     argv[3]);
+  if (login_t < wtmp_start)
+    wtmp_start = login_t;
+
+  /** Can't do it earlier because there is no contract that this function
+   * gets only invoked on lists sorted by Login time. Side effect is, that this
+   * way "wtmpdb begins ..." doesn't lie (as maxentries option does).
+   */
+  if (open_sessions && after_reboot > login_t)
+	return 0;
 
   if (argv[4])
     {
@@ -488,9 +498,6 @@ print_entry (void *unused __attribute__((__unused__)),
 	fprintf (stderr, "Invalid numeric time entry for 'logout': '%s'\n",
 		 argv[4]);
     }
-
-  if (login_t < wtmp_start)
-    wtmp_start = login_t;
 
   int swap = type == xflag && BOOT_TIME && logout_t != 0;
 
@@ -522,6 +529,8 @@ print_entry (void *unused __attribute__((__unused__)),
 
   if (logout_t != 0)
     {
+	  if (open_sessions)
+	    return 0;
       logout_t = strtoull(argv[4], &endptr, 10);
       if ((errno == ERANGE && logout_t == ULLONG_MAX)
 	  || (endptr == argv[4]) || (*endptr != '\0'))
@@ -539,7 +548,7 @@ print_entry (void *unused __attribute__((__unused__)),
     }
   else /* login but no logout */
     {
-      if (after_reboot)
+      if (after_reboot > login_t)
 	{
 	  snprintf (times.logout, sizeof (times.logout), "crash");
 	  times.length[0] = '\0';
@@ -583,7 +592,7 @@ print_entry (void *unused __attribute__((__unused__)),
   if (type == BOOT_TIME)
     {
       tty = "system boot";
-      after_reboot = 1;
+      after_reboot = login_t;
     }
 
   char *print_service = NULL;
@@ -708,6 +717,7 @@ usage (int retval, cmd_idx_t cmd)
   fputs ("  -j, --json          Generate JSON output\n", output);
   fputs ("  -L, --legacy        Session duration precision in minutes instead of seconds\n", output);
   fputs ("  -n, --limit N, -N   Display only first N entries\n", output);
+  fputs ("  -o, --open          Display open sessions, only.\n", output);
   fputs ("  -p, --present TIME  Display who was present at TIME\n", output);
   fputs ("  -R, --nohostname    Don't display hostname\n", output);
   fputs ("  -S, --service       Display PAM service used to login\n", output);
@@ -827,6 +837,7 @@ main_last (int argc, char **argv)
     {"ip", no_argument, NULL, 'i'},
     {"legacy", no_argument, NULL, 'L'},
     {"limit", required_argument, NULL, 'n'},
+    {"open", no_argument, NULL, 'o'},
     {"present", required_argument, NULL, 'p'},
     {"nohostname", no_argument, NULL, 'R'},
     {"service", no_argument, NULL, 'S'},
@@ -842,7 +853,7 @@ main_last (int argc, char **argv)
   char *error = NULL;
   int c;
 
-  while ((c = getopt_long (argc, argv, "0123456789adf:FhijLn:p:RSs:t:uvwx",
+  while ((c = getopt_long (argc, argv, "0123456789adf:FhijLn:op:RSs:t:uvwx",
 			   longopts, NULL)) != -1)
     {
       switch (c)
@@ -885,6 +896,9 @@ main_last (int argc, char **argv)
 	  break;
 	case 'n':
 	  maxentries = strtoul (optarg, NULL, 10);
+	  break;
+	case 'o':
+	  open_sessions = 1;
 	  break;
 	case 'p':
 	  if (parse_time (optarg, &present) < 0)

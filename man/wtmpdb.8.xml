@@ -127,6 +127,16 @@
 	    </varlistentry>
 	    <varlistentry>
 	      <term>
+		<option>-o, --open</option>
+	      </term>
+	      <listitem>
+		<para>
+		  Display only sessions that are still open, i.e. no end of session has been recorded since last boot.
+		</para>
+	      </listitem>
+	    </varlistentry>
+	    <varlistentry>
+	      <term>
 		<option>-p, --present</option> <replaceable>TIME</replaceable>
 	      </term>
 	      <listitem>
