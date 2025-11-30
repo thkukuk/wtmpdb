@@ -113,6 +113,17 @@
 	    </varlistentry>
 	    <varlistentry>
 	      <term>
+		<option>-L, --legacy</option>
+	      </term>
+	      <listitem>
+		<para>
+		  Display session duration with precision in minutes instead of seconds,
+		  which is the default setting for the legacy 'last' command.
+		</para>
+	      </listitem>
+	    </varlistentry>
+	    <varlistentry>
+	      <term>
 		<option>-n, --limit</option> <replaceable>N</replaceable>
 	      </term>
 	      <term>
