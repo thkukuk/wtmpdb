@@ -69,7 +69,7 @@ static char *wtmpdb_path = NULL;
 #define LAST_TIMESTAMP_LEN 32
 
 static uint64_t wtmp_start = UINT64_MAX;
-static int after_reboot = 0;
+static uint64_t after_reboot = 0;
 
 /* options for last */
 static int hostlast = 0;
@@ -467,8 +467,7 @@ print_entry (void *unused __attribute__((__unused__)),
   int swap = type == xflag && BOOT_TIME && logout_t != 0;
 
   if ((since && since > from_usec(swap ? logout_t : login_t)) ||
-      (until && until < from_usec(login_t)) ||
-      (present && present < from_usec(login_t)))
+      (until && until < from_usec(login_t)))
     {
       if (xflag && (type == BOOT_TIME))
         newer_boot = login_t;
@@ -494,16 +493,6 @@ print_entry (void *unused __attribute__((__unused__)),
 
   if (logout_t != 0)
     {
-      logout_t = strtoull(argv[4], &endptr, 10);
-      if ((errno == ERANGE && logout_t == ULLONG_MAX)
-	  || (endptr == argv[4]) || (*endptr != '\0'))
-	fprintf (stderr, "Invalid numeric time entry for 'logout': '%s'\n",
-		 argv[4]);
-
-      if (present && (0 < (logout_t/USEC_PER_SEC)) &&
-	  ((time_t)(logout_t/USEC_PER_SEC) < present))
-	return 0;
-
       format_time (logout_fmt, times.logout, sizeof (times.logout),
 		   logout_t/USEC_PER_SEC);
 
@@ -550,12 +539,6 @@ print_entry (void *unused __attribute__((__unused__)),
 	      break;
 	    }
 	}
-    }
-
-  if (type == BOOT_TIME)
-    {
-      tty = "system boot";
-      after_reboot = 1;
     }
 
   char *print_service = NULL;
@@ -631,6 +614,25 @@ print_entry (void *unused __attribute__((__unused__)),
     }
   if (xflag && (type == BOOT_TIME))
     newer_boot = login_t;
+
+  if (type == BOOT_TIME)
+    {
+      tty = "system boot";
+      after_reboot = login_t;
+    }
+
+  if (present)
+    {
+      if (present < from_usec(login_t))
+	return 0;
+
+      if (logout_t > 0 && from_usec(logout_t) < present)
+	return 0;
+
+      if (logout_t == 0 && after_reboot > 0 &&
+	  from_usec(after_reboot) < present)
+	return 0;
+    }
 
   if ((!until || until >= from_usec(login_t)) &&
       (!since || since <= from_usec(login_t)))
