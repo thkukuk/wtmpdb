@@ -60,6 +60,7 @@ static char *wtmpdb_path = NULL;
 #define TIMEFMT_HHMM   3
 #define TIMEFMT_NOTIME 4
 #define TIMEFMT_ISO    5
+#define TIMEFMT_COMPACT 6
 
 #define TIMEFMT_VALUE 255
 
@@ -82,6 +83,7 @@ static int wflag = 0;
 static int xflag = 0;
 static int legacy = 0;
 static int uniq = 0;
+static int compact = 0;
 static int open_sessions = 0; /* show open sessions, only */
 static const int name_len = 8; /* LAST_LOGIN_LEN */
 static int login_fmt = TIMEFMT_SHORT;
@@ -249,6 +251,14 @@ time_format (const char *fmt)
      logout_len = 25;
      return TIMEFMT_ISO;
    }
+  if (strcmp (fmt, "compact") == 0)
+   {
+     login_fmt = TIMEFMT_COMPACT;
+     login_len = 19;
+     logout_fmt = TIMEFMT_COMPACT;
+     logout_len = 19;
+     return TIMEFMT_COMPACT;
+   }
 
   return -1;
 }
@@ -284,6 +294,13 @@ format_time (int fmt, char *dst, size_t dstlen, uint64_t time)
 	time_t t = (time_t)time;
 	struct tm *tm = localtime (&t);
 	strftime (dst, dstlen, "%FT%T%z", tm); /* Same ISO8601 format original last command uses */
+	break;
+      }
+    case TIMEFMT_COMPACT:
+      {
+	time_t t = (time_t)time;
+	struct tm *tm = localtime (&t);
+	strftime (dst, dstlen, "%F %T", tm);
 	break;
       }
     case TIMEFMT_NOTIME:
@@ -378,25 +395,27 @@ print_line (const char *user, const char *tty, const char *host,
       if (print_service && strlen (print_service) > 0)
 	printf ("       \"service\": \"%s\",\n", print_service);
       printf ("       \"login\": \"%s\",\n", logintime);
+		if (!compact)
+	  printf ("       \"logout\": \"%s\",\n", logouttime);
       if (length[0] == ' ' || length[0] == '(')
 	{
-	  printf ("       \"logout\": \"%s\",\n", logouttime);
 	  printf ("       \"length\": \"%s\"\n",  remove_parentheses(length));
 	}
       else
-	printf ("       \"logout\": \"%s %s\"\n", logouttime, length);
+	printf ("       \"length\": \"%s\"\n", length);
       printf ("     }");
     }
   else
     {
       char *line;
+	  const char *sep = compact ? "" : " - ";
 
       if (nohostname)
 	{
-	  if (asprintf (&line, "%-8.*s %-12.12s%s %-*.*s - %-*.*s %s\n",
+	  if (asprintf (&line, "%-8.*s %-12.12s%s %-*.*s%s%-*.*s %s\n",
 			wflag?(int)strlen (user):name_len,
 			map_soft_reboot (user), tty, print_service,
-			login_len, login_len, logintime,
+			login_len, login_len, logintime, sep,
 			logout_len, logout_len, logouttime,
 			length) < 0)
 	    {
@@ -408,10 +427,10 @@ print_line (const char *user, const char *tty, const char *host,
 	{
 	  if (hostlast)
 	    {
-	      if (asprintf (&line, "%-8.*s %-12.12s%s %-*.*s - %-*.*s %-12.12s %s\n",
+	      if (asprintf (&line, "%-8.*s %-12.12s%s %-*.*s%s%-*.*s %-12.12s %s\n",
 			    wflag?(int)strlen(user):name_len, map_soft_reboot (user),
 			    tty, print_service,
-			    login_len, login_len, logintime,
+			    login_len, login_len, logintime, sep,
 			    logout_len, logout_len, logouttime,
 			    length, host) < 0)
 		{
@@ -421,10 +440,10 @@ print_line (const char *user, const char *tty, const char *host,
 	    }
 	  else
 	    {
-	      if (asprintf (&line, "%-8.*s %-12.12s %-16.*s%s %-*.*s - %-*.*s %s\n",
+	      if (asprintf (&line, "%-8.*s %-12.12s %-16.*s%s %-*.*s%s%-*.*s %s\n",
 			    wflag?(int)strlen(user):name_len, map_soft_reboot (user), tty,
 			    wflag?(int)strlen(host):host_len, host, print_service,
-			    login_len, login_len, logintime,
+			    login_len, login_len, logintime, sep,
 			    logout_len, logout_len, logouttime,
 			    length) < 0)
 		{
@@ -540,15 +559,22 @@ print_entry (void *unused __attribute__((__unused__)),
       if (present && (0 < (logout_t/USEC_PER_SEC)) &&
 	  ((time_t)(logout_t/USEC_PER_SEC) < present))
 	return 0;
-
-      format_time (logout_fmt, times.logout, sizeof (times.logout),
+	  if (compact) {
+		times.logout[0] = '\0';
+	  } else {
+		format_time (logout_fmt, times.logout, sizeof (times.logout),
 		   logout_t/USEC_PER_SEC);
-
+	  }
       calc_time_length (times.length, sizeof(times.length), login_t, logout_t);
     }
   else /* login but no logout */
     {
-      if (after_reboot > login_t)
+	if (compact) {
+	  times.logout[0] = '\0';
+	  times.length[1] = '\0';
+	  times.length[0] = (after_reboot > login_t) ? '?' : '.';
+	}
+      else if (after_reboot > login_t)
 	{
 	  snprintf (times.logout, sizeof (times.logout), "crash");
 	  times.length[0] = '\0';
@@ -657,8 +683,12 @@ print_entry (void *unused __attribute__((__unused__)),
 
       format_time (login_fmt, shutdown.login, sizeof (shutdown.login),
 		   logout_t/USEC_PER_SEC);
-      format_time (logout_fmt, shutdown.logout, sizeof (shutdown.logout),
-		   newer_boot/USEC_PER_SEC);
+	  if (compact) {
+		shutdown.logout[0] = '\0';
+	  } else {
+        format_time (logout_fmt, shutdown.logout, sizeof (shutdown.logout),
+           newer_boot/USEC_PER_SEC);
+	  }
       calc_time_length (shutdown.length, sizeof(shutdown.length), logout_t, newer_boot);
 
       if ((!until || until >= from_usec(logout_t)) &&
@@ -711,6 +741,7 @@ usage (int retval, cmd_idx_t cmd)
     fprintf (output, "\nOptions for %s:\n", cmd_name[CMD_LAST]);
   if (cmd == CMD_LAST || cmd == CMD_NONE) {
   fputs ("  -a, --hostlast      Display hostnames as last entry\n", output);
+  fputs ("  -c, --compact       Hide logouts and set login time format to 'compact'\n", output);
   fputs ("  -d, --dns           Translate IP addresses into a hostname\n", output);
   fputs ("  -F, --fulltimes     Display full times and dates\n", output);
   fputs ("  -i, --ip            Translate hostnames to IP addresses\n", output);
@@ -727,7 +758,7 @@ usage (int retval, cmd_idx_t cmd)
   fputs ("  -w, --fullnames     Display full IP addresses and user and domain names\n", output);
   fputs ("  -x, --system        Display system shutdown entries\n", output);
     fputs ("  --time-format FMT   Display timestamps in the specified format.\n", output);
-    fputs ("\n  FMT format: notime|short|full|iso\n", output);
+    fputs ("\n  FMT format: notime|short|full|iso|compact\n", output);
     fputs ("  TIME format: YYYY-MM-DD HH:MM:SS\n", output);
   }
   if (cmd == CMD_NONE)
@@ -830,6 +861,7 @@ main_last (int argc, char **argv)
     {"help",     no_argument,       NULL, 'h'},
     {"version",  no_argument,       NULL, 'v'},
     {"hostlast", no_argument, NULL, 'a'},
+    {"compact", no_argument, NULL, 'c'},
     {"dns", no_argument, NULL, 'd'},
     {"file", required_argument, NULL, 'f'},
     {"fullnames", no_argument, NULL, 'w'},
@@ -853,7 +885,12 @@ main_last (int argc, char **argv)
   char *error = NULL;
   int c;
 
-  while ((c = getopt_long (argc, argv, "0123456789adf:FhijLn:op:RSs:t:uvwx",
+  if (getenv("LAST_COMPACT")) {
+	  compact = 1;
+	  time_fmt = time_format("compact");
+	  logout_len = 0;
+  }
+  while ((c = getopt_long (argc, argv, "0123456789acdf:FhijLn:op:RSs:t:uvwx",
 			   longopts, NULL)) != -1)
     {
       switch (c)
@@ -873,6 +910,11 @@ main_last (int argc, char **argv)
 	case 'a':
 	  hostlast = 1;
 	  break;
+	case 'c':
+	  compact = 1;
+	  time_fmt = time_format("compact");
+	  logout_len = 0;
+	  break;
 	case 'd':
 	  dflag = 1;
 	  break;
@@ -884,6 +926,7 @@ main_last (int argc, char **argv)
 	  login_len = 24;
 	  logout_fmt = TIMEFMT_CTIME;
 	  logout_len = 24;
+	  compact = 0;
 	  break;
 	case 'i':
 	  iflag = 1;
@@ -958,6 +1001,9 @@ main_last (int argc, char **argv)
 
   if (argc > optind)
     match = argv + optind;
+
+  if (compact)
+	logout_len = 0;
 
   if (nohostname && hostlast)
     {

@@ -73,6 +73,20 @@
 	    </varlistentry>
 	    <varlistentry>
 	      <term>
+		<option>-c, --compact</option>
+	      </term>
+	      <listitem>
+		<para>
+		  Hide the logout column and set the time format for the login
+		  column to <constant>compact</constant>. One may still overwrite the
+		  time format by using the <option>--time-format</option> option after
+		  this one. If the environment variable <envar>LAST_COMPACT</envar>
+		  is set, this option is applied before any others are processed.
+		</para>
+	      </listitem>
+	    </varlistentry>
+	    <varlistentry>
+	      <term>
 		<option>-d, --dns</option>
 	      </term>
 	      <listitem>
@@ -228,14 +242,16 @@
 		<para>
 		  Display timestamps in the specified
 		  <replaceable>FORMAT</replaceable>. The format can be
-		  <replaceable>notime</replaceable>,
-		  <replaceable>short</replaceable>,
-		  <replaceable>full</replaceable>, or
-		  <replaceable>iso</replaceable>.
-		  <replaceable>notime</replaceable> will not display times at
-		  all, <replaceable>short</replaceable> is the default option,
-		  <replaceable>full</replaceable> will display the full times
-		  and dates, and <replaceable>iso</replaceable> will display
+		  <constant>notime</constant>,
+		  <constant>short</constant>,
+		  <constant>compact</constant>,
+		  <constant>full</constant>, or
+		  <constant>iso</constant>.
+		  <constant>notime</constant> will not display times at
+		  all, <constant>short</constant> is the default option,
+		  <constant>compact</constant> format is "YYYY-mm-dd HH:MM:SS",
+		  <constant>full</constant> will display the full times
+		  and dates, and <constant>iso</constant> will display
 		  times in ISO-8601 format.
 		</para>
 	      </listitem>
