@@ -102,6 +102,8 @@ SD_VARLINK_DEFINE_INTERFACE(
                 &vl_method_GetBootTime,
 		SD_VARLINK_SYMBOL_COMMENT("Get all entries from database"),
                 &vl_method_ReadAll,
+		SD_VARLINK_SYMBOL_COMMENT("Rotate the database"),
+		&vl_method_Rotate,
  		SD_VARLINK_SYMBOL_COMMENT("Stop the daemon"),
                 &vl_method_Quit,
 		SD_VARLINK_SYMBOL_COMMENT("Checks if the service is running."),

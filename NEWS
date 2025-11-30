@@ -1,3 +1,8 @@
+Version 0.7X.0
+* Fix last --present option
+* last -x: apply --since and --until to split entries
+* last -x: show shutdown entries before reboot ones
+
 Version 0.75.0
 * Use empty memory table instead of failing to read empty file
 * libwtmpdb: enhance/unify error messages
