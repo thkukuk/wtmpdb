@@ -523,7 +523,7 @@ wtmpdb_entry_free (struct wtmpdb_entry *var)
 }
 
 int
-varlink_read_all (int (*cb_func)(void *unused, int argc, char **argv,
+varlink_read_all (int uniq, int (*cb_func)(void *unused, int argc, char **argv,
 				 char **azColName),
 		  void *userdata, char **error)
 {
@@ -539,6 +539,7 @@ varlink_read_all (int (*cb_func)(void *unused, int argc, char **argv,
     {}
   };
   _cleanup_(sd_varlink_unrefp) sd_varlink *link = NULL;
+  _cleanup_(sd_json_variant_unrefp) sd_json_variant *params = NULL;
   sd_json_variant *result;
   int r;
 
@@ -546,8 +547,18 @@ varlink_read_all (int (*cb_func)(void *unused, int argc, char **argv,
   if (r < 0)
     return r;
 
+  r = sd_json_buildo(&params, SD_JSON_BUILD_PAIR("Uniq", SD_JSON_BUILD_INTEGER(uniq)));
+  if (r < 0)
+    {
+      if (error)
+    if (asprintf (error, "Failed to build JSON data: %s",
+              strerror(-r)) < 0)
+      *error = strdup ("Out of memory");
+      return r;
+    }
+
   const char *error_id;
-  r = sd_varlink_call(link, "org.openSUSE.wtmpdb.ReadAll", NULL, &result, &error_id);
+  r = sd_varlink_call(link, "org.openSUSE.wtmpdb.ReadAll", params, &result, &error_id);
   if (r < 0)
     {
       if (error)
