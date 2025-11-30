@@ -103,7 +103,7 @@ test_rotate (const char *db_path, const int days)
   char *error = NULL;
 
   counter = 0;
-  if (wtmpdb_read_all (db_path, count_entry, &error) != 0)
+  if (wtmpdb_read_all (db_path, 0, count_entry, &error) != 0)
     {
       if (error)
         {
@@ -134,7 +134,7 @@ test_rotate (const char *db_path, const int days)
     }
 
   counter = 0;
-  if (wtmpdb_read_all (db_path, count_entry, &error) != 0)
+  if (wtmpdb_read_all (db_path, 0, count_entry, &error) != 0)
     {
       if (error)
         {

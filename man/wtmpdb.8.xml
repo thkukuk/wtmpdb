@@ -73,21 +73,25 @@
 	    </varlistentry>
 	    <varlistentry>
 	      <term>
-		<option>-d, --dns</option>
+		<option>-c, --compact</option>
 	      </term>
 	      <listitem>
 		<para>
-		  Translate IP addresses into a hostname.
+		  Hide the logout column and set the time format for the login
+		  column to <constant>compact</constant>. One may still overwrite the
+		  time format by using the <option>--time-format</option> option after
+		  this one. If the environment variable <envar>LAST_COMPACT</envar>
+		  is set, this option is applied before any others are processed.
 		</para>
 	      </listitem>
 	    </varlistentry>
 	    <varlistentry>
 	      <term>
-		<option>-f, --file</option> <replaceable>FILE</replaceable>
+		<option>-d, --dns</option>
 	      </term>
 	      <listitem>
 		<para>
-		  Use <replaceable>FILE</replaceable> as wtmpdb database.
+		  Translate IP addresses into a hostname.
 		</para>
 	      </listitem>
 	    </varlistentry>
@@ -113,6 +117,17 @@
 	    </varlistentry>
 	    <varlistentry>
 	      <term>
+		<option>-L, --legacy</option>
+	      </term>
+	      <listitem>
+		<para>
+		  Display session duration with precision in minutes instead of seconds,
+		  which is the default setting for the legacy 'last' command.
+		</para>
+	      </listitem>
+	    </varlistentry>
+	    <varlistentry>
+	      <term>
 		<option>-n, --limit</option> <replaceable>N</replaceable>
 	      </term>
 	      <term>
@@ -121,6 +136,16 @@
 	      <listitem>
 		<para>
 		  Display only the first <replaceable>N</replaceable> entries.
+		</para>
+	      </listitem>
+	    </varlistentry>
+	    <varlistentry>
+	      <term>
+		<option>-o, --open</option>
+	      </term>
+	      <listitem>
+		<para>
+		  Display only sessions that are still open, i.e. no end of session has been recorded since last boot.
 		</para>
 	      </listitem>
 	    </varlistentry>
@@ -177,6 +202,19 @@
 	    </varlistentry>
 	    <varlistentry>
 	      <term>
+		<option>-u, --unique</option>
+	      </term>
+	      <listitem>
+		<para>
+		  Display only the most recent log entry for each user.
+		  This is the default when called as lastlog or wlastlog.
+		  In contrast to the legacy lastlog tool, users without any log entries
+		  will not be shown.
+		</para>
+	      </listitem>
+	    </varlistentry>
+	    <varlistentry>
+	      <term>
 		<option>-w, --fullnames</option>
 	      </term>
 	      <listitem>
@@ -204,14 +242,16 @@
 		<para>
 		  Display timestamps in the specified
 		  <replaceable>FORMAT</replaceable>. The format can be
-		  <replaceable>notime</replaceable>,
-		  <replaceable>short</replaceable>,
-		  <replaceable>full</replaceable>, or
-		  <replaceable>iso</replaceable>.
-		  <replaceable>notime</replaceable> will not display times at
-		  all, <replaceable>short</replaceable> is the default option,
-		  <replaceable>full</replaceable> will display the full times
-		  and dates, and <replaceable>iso</replaceable> will display
+		  <constant>notime</constant>,
+		  <constant>short</constant>,
+		  <constant>compact</constant>,
+		  <constant>full</constant>, or
+		  <constant>iso</constant>.
+		  <constant>notime</constant> will not display times at
+		  all, <constant>short</constant> is the default option,
+		  <constant>compact</constant> format is "YYYY-mm-dd HH:MM:SS",
+		  <constant>full</constant> will display the full times
+		  and dates, and <constant>iso</constant> will display
 		  times in ISO-8601 format.
 		</para>
 	      </listitem>
@@ -244,16 +284,6 @@
 	  <title>boot options</title>
 	  <varlistentry>
 	    <term>
-	      <option>-f, --file</option> <replaceable>FILE</replaceable>
-	    </term>
-	    <listitem>
-	      <para>
-		Use <replaceable>FILE</replaceable> as wtmpdb database.
-	      </para>
-	    </listitem>
-	  </varlistentry>
-	  <varlistentry>
-	    <term>
 	      <option>-q, --quiet</option>
 	    </term>
 	    <listitem>
@@ -264,6 +294,16 @@
 	  </varlistentry>
 	</listitem>
       </varlistentry>
+	<varlistentry>
+		<term>
+			<command>boottime</command>
+			<optional><replaceable>option</replaceable>…</optional>
+		</term>
+		<listitem>
+			<para><command>wtmpdb boottime</command> shows the time of the
+				last boot.</para>
+		</listitem>
+	</varlistentry>
       <varlistentry>
         <term><command>shutdown</command>
 	<optional><replaceable>option</replaceable>…</optional></term>
@@ -273,17 +313,6 @@
 	    requests to the <filename>/var/lib/wtmpdb/wtmp.db</filename>
 	    database.
 	  </para>
-	  <title>shutdown options</title>
-	  <varlistentry>
-	    <term>
-	      <option>-f, --file</option> <replaceable>FILE</replaceable>
-	    </term>
-	    <listitem>
-	      <para>
-		Use <replaceable>FILE</replaceable> as wtmpdb database.
-	      </para>
-	    </listitem>
-	  </varlistentry>
 	</listitem>
       </varlistentry>
       <varlistentry>
@@ -296,17 +325,6 @@
 	    database and removes these entries from the original one.
 	  </para>
 	  <title>rotate options</title>
-	  <varlistentry>
-	    <term>
-	      <option>-f, --file</option> <replaceable>FILE</replaceable>
-	    </term>
-	    <listitem>
-	      <para>
-		Use <replaceable>FILE</replaceable> as wtmpdb database.
-                The exported DB file will be on the same location.
-	      </para>
-	    </listitem>
-	  </varlistentry>
 	  <varlistentry>
 	    <term>
 	      <option>-d, --days</option> <replaceable>DAYS</replaceable>
@@ -331,22 +349,20 @@
 	    files to the <filename>/var/lib/wtmpdb/wtmp.db</filename>
 	    database.
 	  </para>
-	  <title>import options</title>
-	  <varlistentry>
-	    <term>
-	      <option>-f, --file</option> <replaceable>FILE</replaceable>
-	    </term>
-	    <listitem>
-	      <para>
-		Use <replaceable>FILE</replaceable> as wtmpdb database.
-	      </para>
-	    </listitem>
-	  </varlistentry>
 	</listitem>
       </varlistentry>
       <varlistentry>
-	<term>global options</term>
+	<term>common options</term>
 	<title>global options</title>
+	<varlistentry>
+		<term>
+			<option>-f, --file</option> <replaceable>FILE</replaceable>
+		</term>
+		<listitem>
+			<para>Use <replaceable>FILE</replaceable> as wtmpdb
+			database.</para>
+		</listitem>
+	</varlistentry>
 	<varlistentry>
         <term>
           <option>-h, --help</option>

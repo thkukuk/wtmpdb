@@ -158,7 +158,7 @@ wtmpdb_get_id (const char *db_path, const char *tty, char **error)
    each entry.
    Returns 0 on success, -1 on failure. */
 int
-wtmpdb_read_all (const char *db_path,
+wtmpdb_read_all (const char *db_path, int uniq,
 		 int (*cb_func)(void *unused, int argc, char **argv,
 				char **azColName),
 		 char **error)
@@ -168,7 +168,7 @@ wtmpdb_read_all (const char *db_path,
 #if WITH_WTMPDBD
       int r;
 
-      r = varlink_read_all (cb_func, NULL, error);
+      r = varlink_read_all (uniq, cb_func, NULL, error);
       if (r >= 0)
 	return r;
 
@@ -185,11 +185,11 @@ wtmpdb_read_all (const char *db_path,
 #endif
     }
 
-  return sqlite_read_all (db_path?db_path:_PATH_WTMPDB, cb_func, NULL, error);
+  return sqlite_read_all (db_path?db_path:_PATH_WTMPDB, uniq, cb_func, NULL, error);
 }
 
 int
-wtmpdb_read_all_v2 (const char *db_path,
+wtmpdb_read_all_v2 (const char *db_path, int uniq,
 		    int (*cb_func)(void *unused, int argc, char **argv,
 				   char **azColName),
 		    void *userdata, char **error)
@@ -199,7 +199,7 @@ wtmpdb_read_all_v2 (const char *db_path,
 #if WITH_WTMPDBD
       int r;
 
-      r = varlink_read_all (cb_func, userdata, error);
+      r = varlink_read_all (uniq, cb_func, userdata, error);
       if (r >= 0)
 	return r;
 
@@ -216,7 +216,7 @@ wtmpdb_read_all_v2 (const char *db_path,
 #endif
     }
 
-  return sqlite_read_all (db_path?db_path:_PATH_WTMPDB, cb_func, userdata, error);
+  return sqlite_read_all (db_path?db_path:_PATH_WTMPDB, uniq, cb_func, userdata, error);
 }
 
 
