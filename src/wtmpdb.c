@@ -1005,8 +1005,9 @@ soft_reboots_count (void)
 				   &error, 'u', &soft_reboots_count);
   if (r < 0)
     {
-      /* systemd is too old, don't print error */
-      if (!sd_bus_error_has_name (&error, SD_BUS_ERROR_UNKNOWN_PROPERTY))
+      /* no systemd or systemd is too old: don't print error */
+      if (!sd_bus_error_has_name (&error, SD_BUS_ERROR_SERVICE_UNKNOWN) &&
+          !sd_bus_error_has_name (&error, SD_BUS_ERROR_UNKNOWN_PROPERTY))
 	{
 	  /* error occured, log it and return to fallback code */
 	  if (error.message)
