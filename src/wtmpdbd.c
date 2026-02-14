@@ -473,8 +473,14 @@ vl_method_read_all(sd_varlink *link, sd_json_variant *parameters,
 		   sd_varlink_method_flags_t _unused_(flags),
 		   void _unused_(*userdata))
 {
+  struct p {
+	int uniq;
+  } p {
+	.uniq = 0
+  };
   _cleanup_(sd_json_variant_unrefp) sd_json_variant *array = NULL;
   static const sd_json_dispatch_field dispatch_table[] = {
+    { "Uniq", SD_JSON_VARIANT_INTEGER, sd_json_dispatch_int, offsetof(struct p, uniq), SD_JSON_MANDATORY },
     {}
   };
   _cleanup_(freep) char *error = NULL;
@@ -482,7 +488,7 @@ vl_method_read_all(sd_varlink *link, sd_json_variant *parameters,
 
   log_msg (LOG_INFO, "Varlink method \"ReadAll\" called...");
 
-  r = sd_varlink_dispatch(link, parameters, dispatch_table, /* userdata= */ NULL);
+  r = sd_varlink_dispatch(link, parameters, dispatch_table, &p);
   if (r != 0)
     {
       log_msg(LOG_ERR, "Get all entries request: varlink dispatch failed: %s", strerror (-r));
@@ -490,7 +496,7 @@ vl_method_read_all(sd_varlink *link, sd_json_variant *parameters,
     }
 
   incomplete = 0;
-  r = wtmpdb_read_all_v2 (_PATH_WTMPDB, &wtmpdb_cb_func, (void *)&array, &error);
+  r = wtmpdb_read_all_v2 (_PATH_WTMPDB, p.uniq, &wtmpdb_cb_func, (void *)&array, &error);
   if (r < 0 || error != NULL || incomplete)
     {
       log_msg(LOG_ERR, "Didn't got all entries from db: %s", error);

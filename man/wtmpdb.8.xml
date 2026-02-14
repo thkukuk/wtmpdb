@@ -177,6 +177,19 @@
 	    </varlistentry>
 	    <varlistentry>
 	      <term>
+		<option>-u, --unique</option>
+	      </term>
+	      <listitem>
+		<para>
+		  Display only the most recent log entry for each user.
+		  This is the default when called as lastlog.
+		  In contrast to the legacy lastlog tool, users without any log entries
+		  will not be shown.
+		</para>
+	      </listitem>
+	    </varlistentry>
+	    <varlistentry>
+	      <term>
 		<option>-w, --fullnames</option>
 	      </term>
 	      <listitem>

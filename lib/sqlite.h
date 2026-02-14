@@ -37,7 +37,7 @@ extern int sqlite_logout (const char *db_path, int64_t id,
 			  uint64_t usec_logout, char **error);
 extern int64_t sqlite_get_id (const char *db_path, const char *tty,
 			      char **error);
-extern int sqlite_read_all (const char *db_path,
+extern int sqlite_read_all (const char *db_path, int uniq,
 			    int (*cb_func)(void *unused, int argc, char **argv,
 					   char **azColName),
 			    void *userdata, char **error);
