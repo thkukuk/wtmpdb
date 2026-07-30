@@ -7,20 +7,14 @@ jobs:
 
     runs-on: ubuntu-latest
     steps:
-    - name: Install pam-devel
-      run: sudo apt-get install libpam0g-dev libsqlite3-dev
-    - uses: actions/checkout@v3
-    - uses: BSFishy/meson-build@v1.0.3
-      with:
-        action: build
-        directory: build
-        setup-options: -Db_sanitize=address,undefined
-        options: --verbose
-        meson-version: 0.61.4
-    - uses: BSFishy/meson-build@v1.0.3
-      with:
-        action: test
-        directory: build
-        setup-options: -Db_sanitize=address,undefined
-        options: --verbose
-        meson-version: 0.61.4
+    - name: Update package data
+      run: sudo apt update
+    - name: Install devel packages
+      run: sudo apt-get install libpam0g-dev libsqlite3-dev meson ninja-build
+    - uses: actions/checkout@v7
+    - name: Setup
+      run: meson setup build -Db_sanitize=address,undefined
+    - name: Build
+      run: meson compile -C build --verbose
+    - name: Test
+      run: meson test -C build --verbose
