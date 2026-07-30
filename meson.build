@@ -12,7 +12,7 @@ project(
                   'b_lto=true',
 		  'warning_level=2'],
   license : ['BSD-2-Clause'],
-  version : '0.75.0',
+  version : '0.76.0',
 )
 
 conf = configuration_data()

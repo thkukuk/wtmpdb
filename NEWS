@@ -1,4 +1,5 @@
-Version 0.7X.0
+Version 0.76.0
+* Rotate: keep open entries since last boot
 * Fix last --present option
 * last -x: apply --since and --until to split entries
 * last -x: show shutdown entries before reboot ones
