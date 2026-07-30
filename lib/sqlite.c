@@ -38,6 +38,7 @@
 #include <sys/stat.h>
 #include <sqlite3.h>
 
+#include "basics.h"
 #include "wtmpdb.h"
 #include "sqlite.h"
 #include "mkdir_p.h"
@@ -580,7 +581,21 @@ sqlite_rotate(const char *db_path, const int days, char **wtmpdb_name,
       return r;
     }
 
-  char *sql_select = "SELECT * FROM wtmp where Login <= ?";
+  _cleanup_free_ char *sql_select = NULL;
+  if (asprintf(&sql_select, "SELECT * FROM wtmp WHERE Login <= ?"
+	       " AND (Logout IS NOT NULL"
+	       " OR EXISTS (SELECT 1 FROM wtmp b WHERE b.Type = %i AND b.Login > wtmp.Login))",
+	       BOOT_TIME) < 0)
+    {
+      if (error)
+	*error = strdup ("sqlite_rotate: Out of memory");
+      sqlite3_close (db_src);
+      sqlite3_close (db_dest);
+      free(dest_path);
+      free(dest_file);
+      return -ENOMEM;
+    }
+
   sqlite3_stmt *res;
   if (sqlite3_prepare_v2 (db_src, sql_select, -1, &res, 0) != SQLITE_OK)
     {
@@ -631,7 +646,21 @@ sqlite_rotate(const char *db_path, const int days, char **wtmpdb_name,
 
   sqlite3_finalize(res);
 
-  char *sql_delete = "DELETE FROM wtmp where Login <= ?";
+  _cleanup_free_ char *sql_delete = NULL;
+  if (asprintf(&sql_delete, "DELETE FROM wtmp WHERE Login <= ?"
+	       " AND (Logout IS NOT NULL"
+	       " OR EXISTS (SELECT 1 FROM wtmp b WHERE b.Type = %i AND b.Login > wtmp.Login))",
+	       BOOT_TIME) < 0)
+    {
+      if (error)
+	*error = strdup ("sqlite_rotate: Out of memory");
+      sqlite3_close (db_src);
+      sqlite3_close (db_dest);
+      free(dest_path);
+      free(dest_file);
+      return -ENOMEM;
+    }
+
   if (sqlite3_prepare_v2 (db_src, sql_delete, -1, &res, 0) != SQLITE_OK)
     {
       if (error)
