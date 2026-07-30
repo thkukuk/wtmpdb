@@ -314,7 +314,7 @@ remove_parentheses(const char *str)
   if (strlen(str) >= LAST_TIMESTAMP_LEN)
     return str;
 
-  char *cp = strchr (str, '(');
+  const char *cp = strchr (str, '(');
 
   if (cp == NULL)
     return str;
@@ -322,9 +322,9 @@ remove_parentheses(const char *str)
   cp++;
   strncpy(buf, cp, LAST_TIMESTAMP_LEN);
 
-  cp = strchr (buf, ')');
-  if (cp)
-    *cp = '\0';
+  char *ptr = strchr (buf, ')');
+  if (ptr)
+    *ptr = '\0';
 
   return buf;
 }
