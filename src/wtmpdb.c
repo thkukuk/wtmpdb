@@ -80,6 +80,7 @@ static int iflag = 0;
 static int jflag = 0;
 static int wflag = 0;
 static int xflag = 0;
+static int legacy = 0;
 static const int name_len = 8; /* LAST_LOGIN_LEN */
 static int login_fmt = TIMEFMT_SHORT;
 static int login_len = 16; /* 16 = short, 24 = full */
@@ -283,6 +284,16 @@ calc_time_length(char *dst, size_t dstlen, uint64_t start, uint64_t stop)
   int hours = (secs / 3600) % 24;
   uint64_t days  = secs / 86400;
 
+  if (!legacy) {
+    secs %= 60;
+    if (days)
+      snprintf (dst, dstlen, "(%" PRId64 "+%02d:%02d:%02lu)", days, hours, mins, secs);
+    else if (hours)
+      snprintf (dst, dstlen, " (%02d:%02d:%02lu)", hours, mins, secs);
+    else
+      snprintf (dst, dstlen, " (00:%02d:%02lu)", mins, secs);
+	return;
+  }
   if (days)
     snprintf (dst, dstlen, "(%" PRId64 "+%02d:%02d)", days, hours, mins);
   else if (hours)
@@ -659,6 +670,7 @@ usage (int retval)
   fputs ("  -F, --fulltimes     Display full times and dates\n", output);
   fputs ("  -i, --ip            Translate hostnames to IP addresses\n", output);
   fputs ("  -j, --json          Generate JSON output\n", output);
+  fputs ("  -L, --legacy        Session duration precision in minutes instead of seconds\n", output);
   fputs ("  -n, --limit N, -N   Display only first N entries\n", output);
   fputs ("  -p, --present TIME  Display who was present at TIME\n", output);
   fputs ("  -R, --nohostname    Don't display hostname\n", output);
@@ -776,6 +788,7 @@ main_last (int argc, char **argv)
     {"fullnames", no_argument, NULL, 'w'},
     {"fulltimes", no_argument, NULL, 'F'},
     {"ip", no_argument, NULL, 'i'},
+    {"legacy", no_argument, NULL, 'L'},
     {"limit", required_argument, NULL, 'n'},
     {"present", required_argument, NULL, 'p'},
     {"nohostname", no_argument, NULL, 'R'},
@@ -791,7 +804,7 @@ main_last (int argc, char **argv)
   char *error = NULL;
   int c;
 
-  while ((c = getopt_long (argc, argv, "0123456789adf:Fijn:p:RSs:t:wx",
+  while ((c = getopt_long (argc, argv, "0123456789adf:FijLn:p:RSs:t:wx",
 			   longopts, NULL)) != -1)
     {
       switch (c)
@@ -828,6 +841,9 @@ main_last (int argc, char **argv)
 	  break;
 	case 'j':
 	  jflag = 1;
+	  break;
+	case 'L':
+	  legacy = 1;
 	  break;
 	case 'n':
 	  maxentries = strtoul (optarg, NULL, 10);
@@ -1282,7 +1298,11 @@ main (int argc, char **argv)
   };
   int c;
 
-  if (strcmp (basename(argv[0]), "last") == 0)
+  if (strcmp (basename(argv[0]), "last") == 0) {
+	legacy = 1;
+    return main_last (argc, argv);
+  }
+  if (strcmp (basename(argv[0]), "wlast") == 0)
     return main_last (argc, argv);
   else if (argc == 1)
     usage (EXIT_SUCCESS);
