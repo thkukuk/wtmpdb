@@ -48,6 +48,10 @@
 #if HAVE_SYSTEMD
 #include <systemd/sd-bus.h>
 #define _cleanup_(f) __attribute__((cleanup(f)))
+#if WITH_WTMPDBD
+#include <systemd/sd-json.h>
+#include <systemd/sd-varlink.h>
+#endif
 #endif
 
 #include "import.h"
@@ -978,6 +982,47 @@ diff_timespec(const struct timespec *time1, const struct timespec *time0)
 }
 
 #if HAVE_SYSTEMD
+#if WITH_WTMPDBD
+#define _VARLINK_MANAGER_SOCKET "/run/systemd/io.systemd.Manager"
+
+/* Find out if it was a soft-reboot via the io.systemd.Manager varlink
+   interface (io.systemd.Manager.Describe).
+   Return values:
+   -1: varlink interface not available (too old systemd or no varlink support)
+   0: no soft-reboot
+   >0: number of soft-reboots
+*/
+static int64_t
+soft_reboots_count_varlink(void)
+{
+  _cleanup_(sd_varlink_unrefp) sd_varlink *link = NULL;
+  sd_json_variant *result, *runtime, *count;
+  const char *error_id;
+  int r;
+
+  r = sd_varlink_connect_address(&link, _VARLINK_MANAGER_SOCKET);
+  if (r < 0)
+    return -1;
+
+  r = sd_varlink_call(link, "io.systemd.Manager.Describe", NULL,
+		      &result, &error_id);
+  if (r < 0 || (error_id && strlen(error_id) > 0))
+    return -1;
+
+  runtime = sd_json_variant_by_key(result, "runtime");
+  if (!runtime || !sd_json_variant_is_object(runtime))
+    return -1;
+
+  count = sd_json_variant_by_key(runtime, "SoftRebootsCount");
+  if (!count || !sd_json_variant_is_unsigned(count))
+    return -1; // too old systemd, property doesn't exist yet
+
+  /* theoretical this could be integer overflow, bug since
+     the soft reboot counter of systemd is only uint32_t we are safe here */
+  return sd_json_variant_unsigned(count);
+}
+#endif
+
 /* Find out if it was a soft-reboot. With systemd v256 we can query systemd
    for this.
    Return values:
@@ -985,24 +1030,22 @@ diff_timespec(const struct timespec *time1, const struct timespec *time0)
    0: no soft-reboot
    >0: number of soft-reboots
 */
-static int
-soft_reboots_count (void)
+static int64_t
+soft_reboots_count_dbus(void)
 {
-  unsigned soft_reboots_count = -1;
+  unsigned soft_reboots_count = 0;
   _cleanup_(sd_bus_flush_close_unrefp) sd_bus *bus = NULL;
   sd_bus_error error = SD_BUS_ERROR_NULL;
   int r;
 
-  if (sd_bus_open_system (&bus) < 0)
-    {
-      return -1;
-    }
+  if (sd_bus_open_system(&bus) < 0)
+    return -1;
 
-  r = sd_bus_get_property_trivial (bus, "org.freedesktop.systemd1",
-				   "/org/freedesktop/systemd1",
-				   "org.freedesktop.systemd1.Manager",
-				   "SoftRebootsCount",
-				   &error, 'u', &soft_reboots_count);
+  r = sd_bus_get_property_trivial(bus, "org.freedesktop.systemd1",
+				  "/org/freedesktop/systemd1",
+				  "org.freedesktop.systemd1.Manager",
+				  "SoftRebootsCount",
+				  &error, 'u', &soft_reboots_count);
   if (r < 0)
     {
       /* no systemd or systemd is too old: don't print error */
@@ -1019,6 +1062,21 @@ soft_reboots_count (void)
       return -1;
     }
   return soft_reboots_count;
+}
+
+/* Find out if it was a soft-reboot. Prefers the io.systemd.Manager
+   varlink interface and falls back to D-Bus if that is not available.
+   Return values: see soft_reboots_count_dbus().
+*/
+static int64_t
+soft_reboots_count(void)
+{
+#if WITH_WTMPDBD
+  int64_t count = soft_reboots_count_varlink();
+  if (count >= 0)
+    return count;
+#endif
+  return soft_reboots_count_dbus ();
 }
 #endif
 
@@ -1077,7 +1135,7 @@ main_boot (int argc, char **argv)
   struct timespec ts_empty = { .tv_sec = 0, .tv_nsec = 0 };
   uint64_t now = wtmpdb_timespec2usec (diff_timespec(&ts_now, &ts_empty));
 
-  int count = soft_reboots_count ();
+  int64_t count = soft_reboots_count ();
 
   if (count > 0)
     {
@@ -1103,7 +1161,7 @@ main_boot (int argc, char **argv)
 #endif
 
 #if HAVE_AUDIT
-  log_audit (AUDIT_SYSTEM_BOOT);
+  log_audit(AUDIT_SYSTEM_BOOT);
 #endif
 
   if (wtmpdb_login (wtmpdb_path, BOOT_TIME, soft_reboot ? "soft-reboot" : "reboot", time, "~", uts.release,
