@@ -1,6 +1,11 @@
 [Unit]
 Description=wtmpdb daemon
 Documentation=man:wtmpdbd(8)
+DefaultDependencies=no
+RequiresMountsFor=/var/lib/wtmpdb
+After=systemd-remount-fs.service systemd-tmpfiles-setup.service
+Conflicts=shutdown.target
+Before=shutdown.target
 
 [Service]
 Type=notify
