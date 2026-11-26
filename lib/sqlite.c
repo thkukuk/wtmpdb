@@ -36,6 +36,7 @@
 #include <string.h>
 #include <limits.h>
 #include <sys/stat.h>
+#include <fcntl.h>
 #include <sqlite3.h>
 
 #include "basics.h"
@@ -579,9 +580,15 @@ sqlite_rotate(const char *db_path, const int days, char **wtmpdb_name,
       return -ENOMEM;
     }
 
-  /* Find a backup file name which does not exist yet. Rotating more
-     than once for the same day must not re-use, and thus overwrite
-     or wipe out, an already existing backup database. */
+  /* The directory has to exist before we can atomically claim a
+     backup file name in it below. */
+  mkdir_p(dir_part, 0755);
+
+  /* Find a backup file name which does not exist yet and atomically
+     claim it, so that two concurrent rotate runs cannot pick the same
+     name via a check-then-open race. Rotating more than once for the
+     same day must not re-use, and thus overwrite or wipe out, an
+     already existing backup database. */
   for (unsigned int suffix = 0; ; suffix++)
     {
       free(dest_path);
@@ -600,8 +607,27 @@ sqlite_rotate(const char *db_path, const int days, char **wtmpdb_name,
 	  return -ENOMEM;
 	}
 
-      if (access(dest_path, F_OK) != 0)
-	break;
+      mode_t old_umask = umask(0077);
+      int fd = open(dest_path, O_CREAT|O_EXCL|O_WRONLY|O_NOFOLLOW, 0600);
+      umask(old_umask);
+
+      if (fd >= 0)
+	{
+	  close(fd);
+	  break;
+	}
+
+      if (errno != EEXIST)
+	{
+	  if (error)
+	    if (asprintf(error, "sqlite_rotate: Cannot create backup file %s: %s",
+			 dest_path, strerror(errno)) < 0)
+	      *error = strdup("sqlite_rotate: Out of memory");
+	  return -1;
+	}
+
+      /* Name already taken (by an existing backup or a concurrent
+	 rotate run that won the race): try the next suffix. */
     }
 
   r = open_database_rw(dest_path, &db_dest, error);
@@ -625,6 +651,7 @@ sqlite_rotate(const char *db_path, const int days, char **wtmpdb_name,
 	*error = strdup("sqlite_rotate: Out of memory");
       sqlite3_close(db_src);
       sqlite3_close(db_dest);
+      unlink(dest_path);
       return -ENOMEM;
     }
 
@@ -638,6 +665,7 @@ sqlite_rotate(const char *db_path, const int days, char **wtmpdb_name,
           *error = strdup("sqlite_rotate: Out of memory");
       sqlite3_close(db_src);
       sqlite3_close(db_dest);
+      unlink(dest_path);
       return -1;
     }
 
@@ -651,6 +679,7 @@ sqlite_rotate(const char *db_path, const int days, char **wtmpdb_name,
       sqlite3_finalize(res);
       sqlite3_close(db_src);
       sqlite3_close(db_dest);
+      unlink(dest_path);
       return -1;
     }
 
@@ -698,6 +727,9 @@ sqlite_rotate(const char *db_path, const int days, char **wtmpdb_name,
 	*error = strdup("sqlite_rotate: Out of memory");
       sqlite3_close(db_src);
       sqlite3_close(db_dest);
+      /* Source database is still untouched and complete: the backup
+	 we already wrote is now pure duplicate data, remove it. */
+      unlink(dest_path);
       return -ENOMEM;
     }
 
@@ -710,6 +742,9 @@ sqlite_rotate(const char *db_path, const int days, char **wtmpdb_name,
           *error = strdup("sqlite_rotate: Out of memory");
       sqlite3_close(db_src);
       sqlite3_close(db_dest);
+      /* Source database is still untouched and complete: the backup
+	 we already wrote is now pure duplicate data, remove it. */
+      unlink(dest_path);
       return -1;
     }
 
@@ -723,6 +758,9 @@ sqlite_rotate(const char *db_path, const int days, char **wtmpdb_name,
       sqlite3_finalize(res);
       sqlite3_close(db_src);
       sqlite3_close(db_dest);
+      /* Source database is still untouched and complete: the backup
+	 we already wrote is now pure duplicate data, remove it. */
+      unlink(dest_path);
       return -1;
     }
 
@@ -738,6 +776,10 @@ sqlite_rotate(const char *db_path, const int days, char **wtmpdb_name,
       sqlite3_finalize(res);
       sqlite3_close(db_src);
       sqlite3_close(db_dest);
+      /* DELETE in SQLite is atomic: a failed step means no rows were
+	 removed from the source, so the backup is now pure duplicate
+	 data. Remove it so we don't leave stale duplicates around. */
+      unlink(dest_path);
       return -1;
     }
 
