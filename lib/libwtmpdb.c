@@ -110,7 +110,7 @@ wtmpdb_logout (const char *db_path, int64_t id, uint64_t usec_logout,
       if (r >= 0)
 	return r;
 
-      if (VARLINK_IS_NOT_RUNNING(id))
+      if (VARLINK_IS_NOT_RUNNING(r))
 	{
 	  varlink_is_active = 0;
 	  if (error)
