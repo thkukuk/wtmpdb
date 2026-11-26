@@ -556,6 +556,8 @@ sqlite_rotate(const char *db_path, const int days, char **wtmpdb_name,
   strftime(date, 10, "%Y%m%d", tm);
   _cleanup_free_ char *dest_path = NULL;
   _cleanup_free_ char *dest_file = NULL;
+  _cleanup_free_ char *dir_part = NULL;
+  _cleanup_free_ char *base_part = NULL;
   int r;
 
   if ((dest_file = strdup(db_path)) == NULL)
@@ -567,11 +569,39 @@ sqlite_rotate(const char *db_path, const int days, char **wtmpdb_name,
 
   strip_extension(dest_file);
 
-  if (asprintf(&dest_path, "%s/%s_%s.db", dirname(dest_file), basename(dest_file), date) < 0)
+  /* basename() has to run before dirname(), since dirname() may
+     truncate dest_file in place and invalidate it for basename(). */
+  if ((base_part = strdup(basename(dest_file))) == NULL ||
+      (dir_part = strdup(dirname(dest_file))) == NULL)
     {
       if (error)
 	*error = strdup("sqlite_rotate: Out of memory");
       return -ENOMEM;
+    }
+
+  /* Find a backup file name which does not exist yet. Rotating more
+     than once for the same day must not re-use, and thus overwrite
+     or wipe out, an already existing backup database. */
+  for (unsigned int suffix = 0; ; suffix++)
+    {
+      free(dest_path);
+      dest_path = NULL;
+
+      int asr;
+      if (suffix == 0)
+	asr = asprintf(&dest_path, "%s/%s_%s.db", dir_part, base_part, date);
+      else
+	asr = asprintf(&dest_path, "%s/%s_%s_%u.db", dir_part, base_part, date, suffix);
+
+      if (asr < 0)
+	{
+	  if (error)
+	    *error = strdup("sqlite_rotate: Out of memory");
+	  return -ENOMEM;
+	}
+
+      if (access(dest_path, F_OK) != 0)
+	break;
     }
 
   r = open_database_rw(dest_path, &db_dest, error);
@@ -625,24 +655,38 @@ sqlite_rotate(const char *db_path, const int days, char **wtmpdb_name,
     }
 
   int rc;
+  int export_failed = 0;
   while ((rc = sqlite3_step(res)) == SQLITE_ROW)
     {
-      export_row(db_dest, res, error);
+      if (export_row(db_dest, res, error) != 0)
+	{
+	  export_failed = 1;
+	  break;
+	}
       ++counter;
     }
-  if (rc != SQLITE_DONE)
+  if (!export_failed && rc != SQLITE_DONE)
     {
       if (error)
 	if (asprintf(error, "SQL error rotating db: %s", sqlite3_errmsg(db_src)) < 0)
 	  *error = strdup("sqlite_rotate: Out of memory");
 
-      sqlite3_finalize(res);
-      sqlite3_close(db_src);
-      sqlite3_close(db_dest);
-      return -1;
+      export_failed = 1;
     }
 
   sqlite3_finalize(res);
+
+  if (export_failed)
+    {
+      /* Backup database is incomplete: remove it and keep the source
+	 database untouched, so that no entry gets lost. */
+      if (error && *error == NULL)
+	*error = strdup("sqlite_rotate: Failed to export entry to backup database");
+      sqlite3_close(db_src);
+      sqlite3_close(db_dest);
+      unlink(dest_path);
+      return -1;
+    }
 
   _cleanup_free_ char *sql_delete = NULL;
   if (asprintf(&sql_delete, "DELETE FROM wtmp WHERE Login <= ?"
