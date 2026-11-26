@@ -1,4 +1,4 @@
-option('wtmpdbd', type : 'feature', value : 'auto',
+option('wtmpdbd', type : 'feature', value : 'enabled',
        description : 'build daemon with sd-varlink support')
 option('split-usr', type : 'combo', choices : ['auto', 'true', 'false'],
        description : '''/bin, /sbin aren't symlinks into /usr''')
