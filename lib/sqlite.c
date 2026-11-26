@@ -90,9 +90,9 @@ open_database_ro(const char *path, sqlite3 **db, char **error)
   int r;
 
   empty_file = stat(path, &statbuf) == 0 && statbuf.st_size == 0;
-  r = sqlite3_open_v2(path, db, empty_file ?
+  r = sqlite3_open_v2(path, db, (empty_file ?
 		      SQLITE_OPEN_READWRITE | SQLITE_OPEN_MEMORY :
-		      SQLITE_OPEN_READONLY, NULL);
+		      SQLITE_OPEN_READONLY) | SQLITE_OPEN_NOFOLLOW, NULL);
   if (r != SQLITE_OK)
     {
       if (error)
@@ -125,7 +125,9 @@ open_database_rw(const char *path, sqlite3 **db, char **error)
   mode_t old_umask = umask(0077);
 #endif
 
-  r = sqlite3_open(path, db);
+  r = sqlite3_open_v2(path, db,
+		      SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE |
+		      SQLITE_OPEN_NOFOLLOW, NULL);
 #if WITH_WTMPDBD
   umask(old_umask);
 #endif

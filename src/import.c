@@ -148,7 +148,7 @@ import_wtmp_file (const char *db_path,
   int fd;
   int rc;
 
-  fd = open (file, O_RDONLY);
+  fd = open (file, O_RDONLY|O_CLOEXEC|O_NOFOLLOW);
   if (fd == -1)
     {
       fprintf (stderr, "Couldn't open '%s' to import: %s\n",
@@ -161,6 +161,13 @@ import_wtmp_file (const char *db_path,
     {
       fprintf (stderr, "Could not stat '%s': %s\n",
 	      file, strerror (errno));
+      close (fd);
+      return -1;
+    }
+
+  if (!S_ISREG (statbuf.st_mode))
+    {
+      fprintf (stderr, "'%s' is not a regular file\n", file);
       close (fd);
       return -1;
     }
