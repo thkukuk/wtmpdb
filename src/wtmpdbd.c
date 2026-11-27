@@ -308,12 +308,11 @@ vl_method_logout(sd_varlink *link, sd_json_variant *parameters,
       /* let wtmpdb_logout return better error codes, e.g. not found vs real error */
       log_msg(LOG_ERR, "Logout request from db failed: %s", error);
       return sd_varlink_errorbo(link, "org.openSUSE.wtmpdb.InternalError",
-				SD_JSON_BUILD_PAIR_BOOLEAN("Success", false),
                                 SD_JSON_BUILD_PAIR_STRING("ErrorMsg", error));
 
     }
 
-  return sd_varlink_replybo(link, SD_JSON_BUILD_PAIR_BOOLEAN("Success", true));
+  return sd_varlink_reply(link, NULL);
 }
 
 struct get_id {
@@ -391,13 +390,11 @@ vl_method_get_boottime(sd_varlink *link, sd_json_variant *parameters,
     {
       log_msg(LOG_ERR, "Get boottime from db failed: %s", error);
       return sd_varlink_errorbo(link, "org.openSUSE.wtmpdb.NoEntryFound",
-				SD_JSON_BUILD_PAIR_BOOLEAN("Success", false),
                                 SD_JSON_BUILD_PAIR_STRING("ErrorMsg", error));
 
     }
 
-  return sd_varlink_replybo(link, SD_JSON_BUILD_PAIR_BOOLEAN("Success", true),
-			    SD_JSON_BUILD_PAIR_INTEGER("BootTime", boottime));
+  return sd_varlink_replybo(link, SD_JSON_BUILD_PAIR_INTEGER("BootTime", boottime));
 }
 
 static int incomplete = 0;
@@ -495,13 +492,11 @@ vl_method_read_all(sd_varlink *link, sd_json_variant *parameters,
     {
       log_msg(LOG_ERR, "Didn't got all entries from db: %s", error);
       return sd_varlink_errorbo(link, "org.openSUSE.wtmpdb.InternalError",
-				SD_JSON_BUILD_PAIR_BOOLEAN("Success", false),
                                 SD_JSON_BUILD_PAIR_STRING("ErrorMsg", error?error:"unknown"));
 
     }
 
-  return sd_varlink_replybo(link, SD_JSON_BUILD_PAIR_BOOLEAN("Success", true),
-			    SD_JSON_BUILD_PAIR_VARIANT("Data", array));
+  return sd_varlink_replybo(link, SD_JSON_BUILD_PAIR_VARIANT("Data", array));
 }
 
 static int
@@ -552,18 +547,15 @@ vl_method_rotate(sd_varlink *link, sd_json_variant *parameters,
     {
       log_msg(LOG_ERR, "Rotate db failed: %s", error);
       return sd_varlink_errorbo(link, "org.openSUSE.wtmpdb.NoEntryFound",
-				SD_JSON_BUILD_PAIR_BOOLEAN("Success", false),
                                 SD_JSON_BUILD_PAIR_STRING("ErrorMsg", error));
     }
 
   /* XXX make this nicer, build reply on demand */
   if (backup)
-    return sd_varlink_replybo(link, SD_JSON_BUILD_PAIR_BOOLEAN("Success", true),
-			      SD_JSON_BUILD_PAIR_STRING("BackupName", backup),
+    return sd_varlink_replybo(link, SD_JSON_BUILD_PAIR_STRING("BackupName", backup),
 			      SD_JSON_BUILD_PAIR_INTEGER("Entries", entries));
   else
-    return sd_varlink_replybo(link, SD_JSON_BUILD_PAIR_BOOLEAN("Success", true),
-			      SD_JSON_BUILD_PAIR_INTEGER("Entries", entries));
+    return sd_varlink_replybo(link, SD_JSON_BUILD_PAIR_INTEGER("Entries", entries));
 }
 
 static int
@@ -610,11 +602,10 @@ vl_method_quit (sd_varlink *link, sd_json_variant *parameters,
     {
       log_msg (LOG_ERR, "Quit request: disabling event loop failed: %s",
 	       strerror (-r));
-      return sd_varlink_errorbo(link, "org.openSUSE.wtmpdb.InternalError",
-                                SD_JSON_BUILD_PAIR_BOOLEAN("Success", false));
+      return sd_varlink_error(link, "org.openSUSE.wtmpdb.InternalError", NULL);
     }
 
-  return sd_varlink_replybo (link, SD_JSON_BUILD_PAIR_BOOLEAN("Success", true));
+  return sd_varlink_reply (link, NULL);
 }
 
 /* Send a messages to systemd daemon, that inicialization of daemon

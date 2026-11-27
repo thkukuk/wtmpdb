@@ -168,7 +168,6 @@ varlink_login (int type, const char *user, uint64_t usec_login,
 }
 
 struct status {
-  bool success;
   char *error;
 };
 
@@ -182,11 +181,9 @@ int
 varlink_logout (int64_t id, uint64_t usec_logout, char **error)
 {
   _cleanup_(status_free) struct status p = {
-    .success = false,
     .error = NULL,
   };
   static const sd_json_dispatch_field dispatch_table[] = {
-    { "Success", SD_JSON_VARIANT_BOOLEAN, sd_json_dispatch_stdbool, offsetof(struct status, success), 0 },
     { "ErrorMsg", SD_JSON_VARIANT_STRING, sd_json_dispatch_string,  offsetof(struct status, error), 0 },
     {}
   };
@@ -323,7 +320,6 @@ varlink_get_id (const char *tty, char **error)
 }
 
 struct boottime {
-  bool success;
   uint64_t boottime;
   char *error;
 };
@@ -338,12 +334,10 @@ int
 varlink_get_boottime (uint64_t *boottime, char **error)
 {
   _cleanup_(boottime_free) struct boottime p = {
-    .success = false,
     .boottime = -1,
     .error = NULL,
   };
   static const sd_json_dispatch_field dispatch_table[] = {
-    { "Success", SD_JSON_VARIANT_BOOLEAN,  sd_json_dispatch_stdbool, offsetof(struct boottime, success), 0 },
     { "BootTime", SD_JSON_VARIANT_INTEGER, sd_json_dispatch_uint64,  offsetof(struct boottime, boottime), 0 },
     { "ErrorMsg", SD_JSON_VARIANT_STRING,  sd_json_dispatch_string,  offsetof(struct boottime, error),    0 },
     {}
@@ -399,7 +393,6 @@ varlink_get_boottime (uint64_t *boottime, char **error)
 }
 
 struct rotate {
-  bool success;
   char *error;
   uint64_t entries;
   char *backup_name;
@@ -416,13 +409,11 @@ int
 varlink_rotate (const int days, char **backup_name, uint64_t *entries, char **error)
 {
   _cleanup_(rotate_free) struct rotate p = {
-    .success = false,
     .error = NULL,
     .entries = 0,
     .backup_name = NULL
   };
   static const sd_json_dispatch_field dispatch_table[] = {
-    { "Success",    SD_JSON_VARIANT_BOOLEAN, sd_json_dispatch_stdbool, offsetof(struct rotate, success), 0 },
     { "ErrorMsg",   SD_JSON_VARIANT_STRING, sd_json_dispatch_string,   offsetof(struct rotate, error), 0 },
     { "Entries",    SD_JSON_VARIANT_INTEGER, sd_json_dispatch_uint64,  offsetof(struct rotate, entries), 0 },
     { "BackupName", SD_JSON_VARIANT_STRING, sd_json_dispatch_string,   offsetof(struct rotate, backup_name), 0 },
@@ -490,7 +481,6 @@ varlink_rotate (const int days, char **backup_name, uint64_t *entries, char **er
 }
 
 struct read_all {
-  bool success;
   char *error;
   sd_json_variant *contents_json;
 };
@@ -528,12 +518,10 @@ varlink_read_all (int (*cb_func)(void *unused, int argc, char **argv,
 		  void *userdata, char **error)
 {
   _cleanup_(read_all_free) struct read_all p = {
-    .success = false,
     .error = NULL,
     .contents_json = NULL,
   };
   static const sd_json_dispatch_field dispatch_table[] = {
-    { "Success",    SD_JSON_VARIANT_BOOLEAN, sd_json_dispatch_stdbool, offsetof(struct read_all, success), 0 },
     { "ErrorMsg",   SD_JSON_VARIANT_STRING,  sd_json_dispatch_string,  offsetof(struct read_all, error), 0 },
     { "Data",       SD_JSON_VARIANT_ARRAY,   sd_json_dispatch_variant, offsetof(struct read_all, contents_json), 0 },
     {}
