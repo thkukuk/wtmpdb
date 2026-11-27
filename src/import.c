@@ -80,6 +80,20 @@ import_utmp_records (const char *db_path,
       const struct utmp *v;
       int64_t id = -1;
       int64_t usecs = USEC_PER_SEC * u->ut_tv.tv_sec + u->ut_tv.tv_usec;
+      /* ut_user/ut_line/ut_host are fixed-size arrays which are not
+	 guaranteed to be NUL-terminated when full; copy them into
+	 bounded, NUL-terminated buffers before using them as C
+	 strings so strcmp()/strlen() never read past the struct. */
+      char user[UT_NAMESIZE + 1];
+      char line[UT_LINESIZE + 1];
+      char host[UT_HOSTSIZE + 1];
+
+      memcpy (user, u->ut_user, UT_NAMESIZE);
+      user[UT_NAMESIZE] = '\0';
+      memcpy (line, u->ut_line, UT_LINESIZE);
+      line[UT_LINESIZE] = '\0';
+      memcpy (host, u->ut_host, UT_HOSTSIZE);
+      host[UT_HOSTSIZE] = '\0';
 
       switch (u->ut_type)
 	{
@@ -89,14 +103,14 @@ import_utmp_records (const char *db_path,
 	      u->ut_id[1] == '~' &&
 	      u->ut_id[2] == '\0')
 	    {
-	      if (strcmp (u->ut_user, "reboot") == 0)
+	      if (strcmp (user, "reboot") == 0)
 		{
 		  id = wtmpdb_login (db_path, BOOT_TIME, "reboot", usecs, "~",
-				     u->ut_host, NULL, error);
+				     host, NULL, error);
 		  ret = id == -1 ? -1 : 0;
 		  last_reboot_id = id;
 		}
-	      else if (strcmp (u->ut_user, "shutdown") == 0 &&
+	      else if (strcmp (user, "shutdown") == 0 &&
 		       last_reboot_id != -1)
 		{
 		  ret = wtmpdb_logout (db_path, last_reboot_id, usecs, error);
@@ -105,8 +119,8 @@ import_utmp_records (const char *db_path,
 	    }
 	  break;
 	case UTMP_USER_PROCESS:
-	  id = wtmpdb_login (db_path, USER_PROCESS, u->ut_user, usecs,
-			     u->ut_line, u->ut_host, NULL, error);
+	  id = wtmpdb_login (db_path, USER_PROCESS, user, usecs,
+			     line, host, NULL, error);
 	  ret = id == -1 ? -1 : 0;
 	  break;
 	case UTMP_DEAD_PROCESS:
