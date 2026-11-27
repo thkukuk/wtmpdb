@@ -10,10 +10,10 @@ jobs:
     - name: Update package data
       run: sudo apt update
     - name: Install devel packages
-      run: sudo apt-get install libpam0g-dev libsqlite3-dev meson ninja-build
+      run: sudo apt-get install libpam0g-dev libsqlite3-dev libaudit-dev libsystemd-dev  meson ninja-build xsltproc docbook-xsl-ns docbook5-xml
     - uses: actions/checkout@v7
     - name: Setup
-      run: meson setup build
+      run: meson setup build --auto-features=enabled
     - name: Build
       run: meson compile -C build --verbose
     - name: Test
