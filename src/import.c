@@ -107,13 +107,13 @@ import_utmp_records (const char *db_path,
 		{
 		  id = wtmpdb_login (db_path, BOOT_TIME, "reboot", usecs, "~",
 				     host, NULL, error);
-		  ret = id == -1 ? -1 : 0;
+		  ret = id < 0 ? -1 : 0;
 		  last_reboot_id = id;
 		}
 	      else if (strcmp (user, "shutdown") == 0 &&
 		       last_reboot_id != -1)
 		{
-		  ret = wtmpdb_logout (db_path, last_reboot_id, usecs, error);
+		  ret = wtmpdb_logout (db_path, last_reboot_id, usecs, error) < 0 ? -1 : 0;
 		  last_reboot_id = -1;
 		}
 	    }
@@ -121,7 +121,7 @@ import_utmp_records (const char *db_path,
 	case UTMP_USER_PROCESS:
 	  id = wtmpdb_login (db_path, USER_PROCESS, user, usecs,
 			     line, host, NULL, error);
-	  ret = id == -1 ? -1 : 0;
+	  ret = id < 0 ? -1 : 0;
 	  break;
 	case UTMP_DEAD_PROCESS:
 	  for (v = u - 1; v >= utmp_data && v->ut_type != UTMP_BOOT_TIME; v--)
@@ -132,7 +132,7 @@ import_utmp_records (const char *db_path,
 		{
 		  id = id_map[v - utmp_data];
 		  if (id > 0)
-		    ret = wtmpdb_logout (db_path, id, usecs, error);
+		    ret = wtmpdb_logout (db_path, id, usecs, error) < 0 ? -1 : 0;
 		  break;
 		}
 	    }
@@ -206,8 +206,8 @@ import_wtmp_file (const char *db_path,
   rc = import_utmp_records (db_path, data, entries, &error);
   if (rc == -1)
     {
-      fprintf (stderr, "Error importing %s: %sn", file, error);
-      free(error);
+      fprintf (stderr, "Error importing %s: %s\n", file, error);
+      free (error);
     }
 
   munmap (data, file_sz);
